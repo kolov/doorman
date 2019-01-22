@@ -6,9 +6,10 @@ import org.http4s.implicits._
 import org.http4s.server.Router
 import org.specs2.matcher.MatchResult
 import org.specs2.mock.Mockito
+import org.specs2.mutable.Specification
 
 
-class HelloWorldSpec extends org.specs2.mutable.Specification
+class HelloWorldSpec extends Specification
   with Mockito with Testing {
 
   "HelloWorld" >> {
