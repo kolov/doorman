@@ -4,10 +4,16 @@ import cats.data.{Kleisli, OptionT}
 import cats.effect.IO
 import com.akolov.doorman.AppUser
 
-
 class UserService(jwtIssuer: JwtIssuer) {
 
-  val userService: Kleisli[OptionT[IO, ?], Option[String], AppUser] = Kleisli { cookieValue =>
+  def createNewUser: OptionT[IO, UserAndCookie[AppUser]] = {
+    val user = AppUser.create[IO].map(u =>
+      UserAndCookie(u, Some(jwtIssuer.toCookie(UserData(u.uuid, None)))))
+    OptionT.liftF(user)
+  }
+
+
+  val userService: Kleisli[OptionT[IO, ?], Option[String], UserAndCookie[AppUser]] = Kleisli { cookieValue =>
 
     val userFromCookie: Option[AppUser] = for {
       cookieValue <- cookieValue
@@ -17,8 +23,11 @@ class UserService(jwtIssuer: JwtIssuer) {
       }
     } yield AppUser.forProvider(userData.uuid, userData.provider)
 
-    OptionT.fromOption[IO](userFromCookie)
-      .orElseF(AppUser.create[IO].map(Some(_)))
-
+    userFromCookie match {
+      case Some(user) => OptionT.fromOption[IO](Some(UserAndCookie(user, None)))
+      case None => createNewUser
+    }
   }
+
+
 }

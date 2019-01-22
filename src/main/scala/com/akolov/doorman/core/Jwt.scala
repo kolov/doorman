@@ -5,9 +5,10 @@ import com.auth0.jwt.algorithms.Algorithm
 
 import scala.util.Try
 
+case class UserData(uuid: String, provider: Option[String])
+
 case class JwtIssuer(name: String, algorithm: Algorithm) {
 
-  case class UserData(uuid: String, provider: Option[String])
 
   private[this] val verifier = JWT.require(algorithm)
     .withIssuer(name)
@@ -25,8 +26,8 @@ case class JwtIssuer(name: String, algorithm: Algorithm) {
   }
 
   def getUserData(token: String): Either[Throwable, UserData] =
-    Try(verifier.verify(token)).toEither.map {
-      payload => UserData(payload.getSubject, Option(payload.getClaim("provider")).map(_.asString))
+    Try(verifier.verify(token)).toEither.map { payload =>
+      UserData(payload.getSubject, Option(payload.getClaim("provider").asString))
     }
 
 

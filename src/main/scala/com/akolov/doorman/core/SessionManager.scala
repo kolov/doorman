@@ -9,19 +9,19 @@ import org.http4s.headers.Cookie
 import org.http4s.server.AuthMiddleware
 import org.http4s.{AuthedRequest, Request, Response, ResponseCookie, Status}
 
-case class UserAndCookie[User](user: User, cookie: String)
+case class UserAndCookie[User](user: User, cookie: Option[String])
+
+class SessionManager[F[_] : Effect, User](userService: Kleisli[OptionT[F, ?], Option[String], UserAndCookie[User]]) extends Http4sDsl[F] {
 
 
-class SessionManager[F[_] : Effect, User](userService: Kleisli[OptionT[F, ?], Option[String], User]) extends Http4sDsl[F] {
-
+  val CookieName = "auth-cookie"
 
   def verifyLogin(request: Request[F]): F[Either[String, String]] = ??? // gotta figure out how to do the form
 
-  val authUser: Kleisli[OptionT[F, ?], Request[F], User] = Kleisli { (req: Request[F]) =>
-
+  val userFromCookie: Kleisli[OptionT[F, ?], Request[F], UserAndCookie[User]] = Kleisli { (req: Request[F]) =>
     val cookieValue: Option[String] = Cookie.from(req.headers)
       .map(_.values.head)
-      .filter(x => x.name.toString == "auth-cookie")
+      .filter(x => x.name.toString == CookieName)
       .headOption
       .map(_.content)
 
@@ -42,23 +42,26 @@ class SessionManager[F[_] : Effect, User](userService: Kleisli[OptionT[F, ?], Op
   def defaultAuthFailure[F[_]](implicit F: Applicative[F]): Request[F] => F[Response[F]] =
     _ => F.pure(Response[F](Status.Unauthorized))
 
-  // type AuthMiddleware[F[_], T] =
-  //    Middleware[OptionT[F, ?], AuthedRequest[F, T], Response[F], Request[F], Response[F]]
-  //  type Middleware[F[_], A, B, C, D] = Kleisli[F, A, B] => Kleisli[F, C, D]
-  //
   val middleware: AuthMiddleware[F, User] = { (service: Kleisli[OptionT[F, ?], AuthedRequest[F, User], Response[F]]) =>
     Kleisli { r: Request[F] =>
-      authUser
-        .map(user => AuthedRequest(user, r))
-        .andThen(service.mapF(o => OptionT.liftF(o.getOrElse(Response[F](Status.NotFound)))))
-        //        .mapF(o => OptionT.liftF(o.getOrElseF(defaultAuthFailure(r))))
-        .run(r)
-        .map(_.addCookie("auth-cookie", "xxx"))
+      val reqAndCookie = userFromCookie.map { userAndCookie =>
+        (AuthedRequest(userAndCookie.user, r), userAndCookie.cookie)
+      }
+      //service.mapF(o => OptionT.liftF(o.getOrElse(Response[F](Status.NotFound)))))
+      //        .mapF(o => OptionT.liftF(o.getOrElseF(defaultAuthFailure(r))))
+      runAndKeep(reqAndCookie, service).run(r).map {
+        case (response, optCookie) => optCookie.map(v => response.addCookie(CookieName, v)).getOrElse(response)
+      }
+
     }
   }
 
+  def runAndKeep[F[_] : Monad, A, B, B1, C](k1: Kleisli[F, A, (B, B1)], k2: Kleisli[F, B, C]): Kleisli[F, A, (C, B1)] =
+    Kleisli(a => k1.run(a).flatMap { case (b, b1) => k2.run(b).map((_, b1)) })
 
 }
+
+
 
 
 

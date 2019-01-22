@@ -9,10 +9,9 @@ object Main extends IOApp {
 
   def run(args: List[String]): IO[ExitCode] =
     for {
-      myService <- ServerConfig.theService
       code <- BlazeServerBuilder[IO]
         .bindHttp(8080, "0.0.0.0")
-        .withHttpApp(myService.app)
+        .withHttpApp(ServerConfig.app)
         .serve.compile.drain.as(ExitCode.Success)
     } yield code
 
