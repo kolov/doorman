@@ -2,6 +2,7 @@ val Http4sVersion = "0.20.0-M3"
 val Specs2Version = "4.1.0"
 val LogbackVersion = "1.2.3"
 val GoogleOauthClientVersion = "1.22.0"
+val CirceVersion = "0.10.1"
 
 lazy val root = (project in file("."))
   .settings(
@@ -21,6 +22,8 @@ lazy val root = (project in file("."))
       "com.typesafe"            % "config"                      % "1.3.2",
       "org.specs2"              %% "specs2-core"                % Specs2Version % "test",
       "org.specs2"              %% "specs2-mock"                % Specs2Version % "test",
+      "io.circe"                %% "circe-generic"              % CirceVersion,
+      "io.circe"                %% "circe-parser"               % CirceVersion,
     ),
     addCompilerPlugin("org.spire-math" %% "kind-projector"     % "0.9.6"),
     addCompilerPlugin("com.olegpy"     %% "better-monadic-for" % "0.2.4")

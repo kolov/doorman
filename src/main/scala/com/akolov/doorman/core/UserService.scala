@@ -1,30 +1,31 @@
 package com.akolov.doorman.core
 
-import cats.data.{Kleisli, OptionT}
-import cats.effect.IO
-import com.akolov.doorman.AppUser
+import cats._
+import cats.data._
+import cats.effect._
+import cats.implicits._
+import com.akolov.doorman.DoormanClient
 
-class UserService(jwtIssuer: JwtIssuer) {
+class UserService[F[_] : Monad, User](doormanClient: DoormanClient[F, User]) {
 
-  def createNewUser: OptionT[IO, UserAndCookie[AppUser]] = {
-    val user = AppUser.create[IO].map(u =>
-      UserAndCookie(u, Some(jwtIssuer.toCookie(UserData(u.uuid, None)))))
+  def createNewUser: OptionT[F, UserAndCookie[User]] = {
+    val user = doormanClient.create.map(u =>
+      UserAndCookie(u, Some(doormanClient.toCookie(u))))
     OptionT.liftF(user)
   }
 
+  val userService: Kleisli[OptionT[F, ?], Option[String], UserAndCookie[User]] = Kleisli { cookieValue =>
 
-  val userService: Kleisli[OptionT[IO, ?], Option[String], UserAndCookie[AppUser]] = Kleisli { cookieValue =>
-
-    val userFromCookie: Option[AppUser] = for {
+    val userFromCookie: Option[User] = for {
       cookieValue <- cookieValue
-      userData <- jwtIssuer.getUserData(cookieValue) match {
-        case Left(e) => println(s"Invalid jwt: ${e.getMessage} parsing $cookieValue"); None
-        case Right(r) => Some(r)
+      userData <- doormanClient.toUser(cookieValue) match {
+        case None => println(s"Invalid jwt: error parsing $cookieValue"); None
+        case u@_ => u
       }
-    } yield AppUser.forProvider(userData.uuid, userData.provider)
+    } yield userData
 
     userFromCookie match {
-      case Some(user) => OptionT.fromOption[IO](Some(UserAndCookie(user, None)))
+      case Some(user) => OptionT.fromOption[F](Some(UserAndCookie(user, None)))
       case None => createNewUser
     }
   }

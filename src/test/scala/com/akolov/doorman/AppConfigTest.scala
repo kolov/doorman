@@ -20,7 +20,7 @@ class AppConfigTest extends Specification {
           clientId = "set in env var",
           clientSecret = "set in env var",
           scope = List("openid", "email", "profile"),
-          redirectUrl = "http:/localhost:8080/oauth/login")))
+          redirectUrl = "http://localhost:8080/oauth/login")))
 
 
 }

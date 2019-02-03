@@ -1,9 +1,9 @@
 package com.akolov.doorman
 
-import cats.{Functor, data}
-import cats.data.{Kleisli, OptionT}
-import cats.effect.{ContextShift, IO, Timer}
+import cats._
 import cats.implicits._
+import cats.data._
+import cats.effect.{ContextShift, IO, Timer}
 import com.akolov.doorman.core.{JwtIssuer, SessionManager, UserAndCookie, UserService}
 import com.auth0.jwt.algorithms.Algorithm
 import com.typesafe.config.{Config, ConfigFactory, ConfigList, ConfigObject}
@@ -30,17 +30,18 @@ object ServerConfig {
 
   val jwtIssuer = new JwtIssuer("thisapp", Algorithm.HMAC256("dsdfdsfdsfdsf"))
 
-  val userService: Kleisli[OptionT[IO, ?], Option[String], UserAndCookie[AppUser]] = new UserService(jwtIssuer).userService
+  val doormanClient : DoormanClient[IO, AppUser] =  SimpleDoormanClient
+  val userService: Kleisli[OptionT[IO, ?], Option[String], UserAndCookie[AppUser]] = new UserService(doormanClient).userService
 
   val sessionManager = new SessionManager[IO, AppUser](userService)
 
 
-  def oauthService(implicit cs: ContextShift[IO]): Kleisli[IO, Config, OauthService[IO]] =
+  def oauthService(implicit cs: ContextShift[IO]): Kleisli[IO, Config, OauthService[IO, AppUser]] =
     for {
       config <- data.Kleisli.ask[IO, Config]
       oauthEntries = AppConfig.oauthEntries(config)
       client = BlazeClientBuilder[IO](global).resource
-      service = new OauthService[IO](oauthEntries, client)
+      service = new OauthService[IO, AppUser](oauthEntries, client, doormanClient, sessionManager)
     } yield service
 
 
@@ -54,7 +55,7 @@ object ServerConfig {
       oauthService <- oauthService
       helloWorldService = new HelloWorldService[IO, AppUser](sessionManager)
       router = Router(
-        "/api/v1" -> CORS(/*helloWorldService.routes <+>*/ oauthService.routes, corsConfig),
+        "/api/v1" -> CORS(helloWorldService.routes <+> oauthService.routes, corsConfig),
       ).orNotFound
     } yield router
 

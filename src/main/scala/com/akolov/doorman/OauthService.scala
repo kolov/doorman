@@ -1,16 +1,25 @@
 package com.akolov.doorman
 
-import cats.effect.{Effect, IO, Resource}
-import com.google.api.client.auth.oauth2.{AuthorizationCodeTokenRequest, AuthorizationRequestUrl, BearerToken, Credential}
+import cats._
+import cats.implicits._
+import cats.data._
+import cats.effect._
+import com.akolov.doorman.core.{JwtIssuer, SessionManager, UserService}
+import com.google.api.client.auth.oauth2._
 import com.google.api.client.http.javanet.NetHttpTransport
-import com.google.api.client.http.{BasicAuthentication, GenericUrl, HttpHeaders}
+import com.google.api.client.http.{BasicAuthentication, GenericUrl}
 import com.google.api.client.json.jackson.JacksonFactory
-import com.google.api.client.json.{GenericJson, JsonObjectParser}
-import org.http4s.HttpRoutes
+import io.circe.Decoder.Result
+import io.circe._
+import org.http4s.CacheDirective.`no-cache`
+import org.http4s.circe.jsonOf
 import org.http4s.client.Client
 import org.http4s.dsl.Http4sDsl
+import org.http4s.headers.{Accept, Authorization, Location, `Cache-Control`}
+import org.http4s.{AuthScheme, Credentials, EntityDecoder, Headers, HttpRoutes, MediaType, Request, Response, Uri}
 
 import scala.collection.JavaConverters._
+
 
 case class OauthConfig(userAuthorizationUri: String,
                        accessTokenUri: String,
@@ -21,50 +30,101 @@ case class OauthConfig(userAuthorizationUri: String,
                        redirectUrl: String
                       )
 
-class OauthService[F[_] : Effect](configs: Map[String, OauthConfig], client: Resource[F, Client[F]]) extends Http4sDsl[F] {
+class OauthService[F[_] : Effect : Monad, User](configs: Map[String, OauthConfig],
+                                                clientResource: Resource[F, Client[F]],
+                                                val doormanClient: DoormanClient[F, User],
+                                                sessionManager: SessionManager[F, User]
+                                               ) extends Http4sDsl[F] {
 
   object CodeMatcher extends QueryParamDecoderMatcher[String]("code")
 
   def routes: HttpRoutes[F] = HttpRoutes.of[F] {
     case GET -> Root / "login" / configname =>
-      configs.get(configname).map { config =>
-        val url = new AuthorizationRequestUrl(config.userAuthorizationUri, config.clientId,
+
+      val redirectUri: F[Option[Uri]] = ( for {
+        config <- OptionT.fromOption[F](configs.get(configname))
+        url = new AuthorizationRequestUrl(config.userAuthorizationUri, config.clientId,
           List("code").asJava)
           .setScopes(config.scope.toList.asJava)
           .setRedirectUri(config.redirectUrl).build
-        TemporaryRedirect(url)
-      }.getOrElse(BadRequest(s"No configuration for oauth $configname"))
+        option <- OptionT.fromOption[F](Uri.fromString(url).toOption)
+      } yield option ).value
+
+      val responseMoved: F[Option[F[Response[F]]]] = redirectUri.map { (ou: Option[Uri]) =>
+        ou.map { uri =>
+          MovedPermanently(
+            location = Location(uri),
+            body = "",
+            headers = `Cache-Control`(NonEmptyList(`no-cache`(), Nil)))
+        }
+      }
+      responseMoved.flatMap(_.getOrElse(BadRequest(s"No configuration for oauth $configname")))
+
     case GET -> Root / "oauth" / "login" / configname :? CodeMatcher(code) =>
-      configs.get(configname).map { config =>
-        val response = new AuthorizationCodeTokenRequest(new NetHttpTransport, new JacksonFactory,
+      val userInfo: F[Option[JsonObject]] = ( for {
+        config <- OptionT.fromOption[F](configs.get(configname))
+        resp = new AuthorizationCodeTokenRequest(new NetHttpTransport, new JacksonFactory,
           new GenericUrl(config.accessTokenUri), code)
           .setRedirectUri(config.redirectUrl)
           .setClientAuthentication(
             new BasicAuthentication(config.clientId, config.clientSecret))
           .execute()
 
-        val credential = new Credential(BearerToken.authorizationHeaderAccessMethod())
-        credential.setFromTokenResponse(response)
-        val userInfo = getUserInfo(credential.getAccessToken, config.userInfoUri)
-        TemporaryRedirect("/")
-      }.getOrElse(BadRequest(s"No configuration for oauth $configname"))
+        credential = new Credential(BearerToken.authorizationHeaderAccessMethod())
+        _ = credential.setFromTokenResponse(resp)
+        userInfo <- OptionT(getUserInfo(credential.getAccessToken, config.userInfoUri))
+
+      } yield userInfo ).value
+
+
+      userInfo.flatMap { (ou: Option[JsonObject]) =>
+        val resp: Option[F[Response[F]]] = ou.map { json =>
+
+          val dataMap = json.toMap.mapValues(_.toString)
+          val resp: F[Response[F]] = Ok("found user")
+          resp.flatMap { (r: Response[F]) =>
+            val fu: F[User] = doormanClient.fromProvider(dataMap)
+            val xxx: F[Response[F]] = fu.flatMap(u => sessionManager.userRegistered(u, r))
+            xxx
+          }
+        }
+        resp.getOrElse(BadRequest("xx"))
+
+      }
   }
 
-  def getUserInfo(accessToken: String, userInfoUri: String): GenericJson = {
-    val jsonFactory = new JacksonFactory()
-    val requestFactory = new NetHttpTransport().createRequestFactory()
-    val request = requestFactory.buildGetRequest(new GenericUrl(userInfoUri))
-    request.setParser(new JsonObjectParser(jsonFactory))
-    request.setThrowExceptionOnExecuteError(false)
-    val headers = new HttpHeaders()
-    headers.setAuthorization("Bearer " + accessToken)
-    request.setHeaders(headers)
-    val userInfoResponse = request.execute()
-    if (userInfoResponse.isSuccessStatusCode()) {
-      return userInfoResponse.parseAs(classOf[GenericJson])
-    } else {
-      return null
+  // returns F[Response[F]]
+
+  def getUserInfo(accessToken: String, userInfoUri: String): F[Option[JsonObject]] = {
+
+    val request: Request[F] = Request[F](method = GET,
+      uri = Uri.unsafeFromString(userInfoUri),
+      headers = Headers(
+        Authorization(Credentials.Token(AuthScheme.Bearer, accessToken)),
+        Accept(MediaType.application.json)))
+
+    val decoderJson = implicitly[Decoder[Json]]
+
+    implicit val decoderJsonObject = new Decoder[JsonObject] {
+      override def apply(c: HCursor): Result[JsonObject] = {
+        decoderJson.apply(c).flatMap { j: Json =>
+          j.asObject match {
+            case Some(o) => Right(o)
+            case None => Left(DecodingFailure("Not an object", List()))
+          }
+        }
+      }
     }
+
+    implicit val jof: EntityDecoder[F, JsonObject] = jsonOf[F, JsonObject]
+
+    clientResource.use { (client: Client[F]) =>
+      val r: F[JsonObject] = client.expect[JsonObject](request)
+      println(s"r = $r")
+      r.map { user => println(s"user=$user"); Some(user) }
+    }
+
   }
+
 
 }
