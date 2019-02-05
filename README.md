@@ -45,6 +45,9 @@ Provide user information in the service:
 Add routes for Oauth2 login:
 
       def routes: HttpRoutes[F] = HttpRoutes.of[F] {
+      
+        val methods = new OauthMethods[F, User](config, clientResource, sessionManager)
+        
         case GET -> Root / "login" / configname =>
           methods.login(configname)
     

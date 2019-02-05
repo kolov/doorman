@@ -8,7 +8,7 @@ import org.http4s.client.Client
 import org.http4s.dsl.Http4sDsl
 
 
-class OauthService[F[_] : Effect : Monad, User](configs: Map[String, OauthConfig],
+class OauthService[F[_] : Effect : Monad, User](config: Map[String, OauthConfig],
                                                 clientResource: Resource[F, Client[F]],
                                                 val doormanClient: DoormanClient[F, User],
                                                 sessionManager: SessionManager[F, User]
@@ -16,7 +16,7 @@ class OauthService[F[_] : Effect : Monad, User](configs: Map[String, OauthConfig
 
   object CodeMatcher extends QueryParamDecoderMatcher[String]("code")
 
-  val methods = new OauthMethods[F, User](configs, clientResource, sessionManager)
+  val methods = new OauthMethods[F, User](config, clientResource, sessionManager)
 
   def routes: HttpRoutes[F] = HttpRoutes.of[F] {
     case GET -> Root / "login" / configname =>
