@@ -4,7 +4,7 @@ import cats._
 import cats.data._
 import cats.implicits._
 import cats.effect.{ContextShift, IO, Timer}
-import com.akolov.doorman.core.{DoormanClient, OauthConfig, SessionManager}
+import com.akolov.doorman.core.{Doorman, OauthConfig, SessionManager}
 import com.typesafe.config.{Config, ConfigFactory, ConfigList, ConfigObject}
 import org.http4s._
 import org.http4s.client.blaze.BlazeClientBuilder
@@ -26,7 +26,7 @@ object ServerConfig {
       maxAge = 1.day.toSeconds
     )
 
-  val doormanClient : DoormanClient[IO, AppUser] =  SimpleDoormanClient
+  val doormanClient : Doorman[IO, AppUser] =  SimpleDoormanClient
 
 
   val sessionManager = new SessionManager[IO, AppUser](doormanClient)
@@ -41,15 +41,15 @@ object ServerConfig {
     } yield service
 
 
-  implicit class KleisliResponseOps[F[_] : Functor, A](self: Kleisli[OptionT[F, ?], A, Response[F]]) {
-    def orNotFound: Kleisli[F, A, Response[F]] =
+  implicit class KleisliResponseOps[A](self: Kleisli[OptionT[IO, ?], A, Response[IO]]) {
+    def orNotFound: Kleisli[IO, A, Response[IO]] =
       Kleisli(a => self.run(a).getOrElse(Response.notFound))
   }
 
   def theService(implicit timer: Timer[IO], cs: ContextShift[IO]) =
     for {
       oauthService <- oauthService
-      helloWorldService = new HelloWorldService[IO, AppUser](sessionManager)
+      helloWorldService = new DemoService[IO, AppUser](sessionManager)
       router = Router(
         "/api/v1" -> CORS(helloWorldService.routes <+> oauthService.routes, corsConfig),
       ).orNotFound

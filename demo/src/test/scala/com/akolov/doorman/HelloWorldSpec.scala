@@ -27,7 +27,7 @@ class HelloWorldSpec extends Specification
   private[this] val retHelloWorld: Response[IO] = {
     val getHW = Request[IO](Method.GET, Uri.uri("/api/v1/hello/world"))
     Router(
-      "/api/v1" -> new HelloWorldService[IO, AppUser](sessionManager).routes)
+      "/api/v1" -> new DemoService[IO, AppUser](sessionManager).routes)
       .orNotFound(getHW).unsafeRunSync()
   }
 

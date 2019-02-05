@@ -4,7 +4,7 @@ import cats._
 import cats.data._
 import cats.implicits._
 
-class UserService[F[_] : Monad, User](doormanClient: DoormanClient[F, User]) {
+class UserService[F[_] : Monad, User](doormanClient: Doorman[F, User]) {
 
   def createNewUser: OptionT[F, UserAndCookie[User]] = {
     val user = doormanClient.create.map(u =>

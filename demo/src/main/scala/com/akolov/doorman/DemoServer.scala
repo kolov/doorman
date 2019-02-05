@@ -1,9 +1,6 @@
 package com.akolov.doorman
 
-import cats.data.Kleisli
-import cats.implicits._
 import cats.effect.{ExitCode, IO, IOApp}
-import com.typesafe.config.Config
 import org.http4s.server.blaze.BlazeServerBuilder
 
 

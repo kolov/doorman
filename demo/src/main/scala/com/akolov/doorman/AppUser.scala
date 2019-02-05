@@ -4,7 +4,7 @@ import java.util.UUID
 
 import cats.Monad
 import cats.effect.{IO, Sync}
-import com.akolov.doorman.core.DoormanClient
+import com.akolov.doorman.core.Doorman
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 
@@ -22,7 +22,7 @@ object AppUser {
   def forProvider(uuid: String, identity: Option[String]): AppUser = new AppUser(uuid, identity)
 }
 
-object SimpleDoormanClient extends DoormanClient[IO, AppUser] {
+object SimpleDoormanClient extends Doorman[IO, AppUser] {
   //  override type User = AppUser
 
   private val name = "MyApp"

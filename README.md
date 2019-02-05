@@ -6,9 +6,9 @@ This project has not reached releasable state, do not use yet!
 
 # Usage
 
-Configure a `DoormanClient`:
+Configure a `Doorman`:
 
-    trait DoormanClient[F[_], User] {
+    trait Doorman[F[_], User] {
          /**
          Create User from Oauth user data
           */

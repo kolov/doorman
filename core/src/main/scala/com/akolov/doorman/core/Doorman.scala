@@ -1,15 +1,8 @@
 package com.akolov.doorman.core
 
-import java.util.UUID
-
 import cats.Monad
-import cats.effect.{IO, Sync}
-import com.auth0.jwt.JWT
-import com.auth0.jwt.algorithms.Algorithm
 
-import scala.util.Try
-
-trait DoormanClient[F[_], User] {
+trait Doorman[F[_], User] {
   //  type User
 
   /**
@@ -23,7 +16,7 @@ trait DoormanClient[F[_], User] {
   def create()(implicit ev: Monad[F]): F[User]
 
   /**
-    * marshall th user to a cookie
+    * marshall User to a cookie
     */
   def toCookie(user: User): String
 
