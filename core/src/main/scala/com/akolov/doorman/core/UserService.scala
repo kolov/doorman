@@ -2,9 +2,7 @@ package com.akolov.doorman.core
 
 import cats._
 import cats.data._
-import cats.effect._
 import cats.implicits._
-import com.akolov.doorman.DoormanClient
 
 class UserService[F[_] : Monad, User](doormanClient: DoormanClient[F, User]) {
 
@@ -20,7 +18,7 @@ class UserService[F[_] : Monad, User](doormanClient: DoormanClient[F, User]) {
       cookieValue <- cookieValue
       userData <- doormanClient.toUser(cookieValue) match {
         case None => println(s"Invalid jwt: error parsing $cookieValue"); None
-        case u@_ => u
+        case someu => someu
       }
     } yield userData
 

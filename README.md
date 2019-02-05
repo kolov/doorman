@@ -32,7 +32,7 @@ Configure a `DoormanClient`:
     }
    
    
-Then in the service:
+Provide user information in the service:
 
     val sessionManager = SessionManager(doormanClient)
     val routes: HttpRoutes[F] = sessionManager.middleware(
@@ -41,3 +41,15 @@ Then in the service:
             Ok(Json.obj("message" -> Json.fromString(s"Hello, ${user}")))
         }
       )
+      
+Add routes for Oauth2 login:
+
+      def routes: HttpRoutes[F] = HttpRoutes.of[F] {
+        case GET -> Root / "login" / configname =>
+          methods.login(configname)
+    
+        case GET -> Root / "oauth" / "login" / configname :? CodeMatcher(code) =>
+          methods.callback(configname, code)
+    
+      }      
+      
