@@ -8,30 +8,28 @@ This project has not reached releasable state, do not use yet!
 
 Configure a `DoormanClient`:
 
-```trait DoormanClient[F[_], User] {
-     //  type User
+    trait DoormanClient[F[_], User] {
+         /**
+         Create User from Oauth user data
+          */
+         def fromProvider(data: Map[String, String]): F[User]
+       
+         /**
+         Create a non-authenticated user
+          */
+         def create()(implicit ev: Monad[F]): F[User]
+       
+         /**
+           * marshall th user to a cookie
+           */
+         def toCookie(user: User): String
+       
+         /**
+           * Unmarshall cookie to User
+           */
+         def toUser(cookie: String): Option[User]
    
-     /**
-     Create User from Oauth user data
-      */
-     def fromProvider(data: Map[String, String]): F[User]
-   
-     /**
-     Create a non-authenticated user
-      */
-     def create()(implicit ev: Monad[F]): F[User]
-   
-     /**
-       * marshall th user to a cookie
-       */
-     def toCookie(user: User): String
-   
-     /**
-       * Unmarshall cookie to User
-       */
-     def toUser(cookie: String): Option[User]
-   
-   }```
+    }
    
    
 Then in the service:
