@@ -1,10 +1,10 @@
 package com.akolov.doorman
 
 import cats._
-import cats.implicits._
 import cats.data._
 import cats.effect._
-import com.akolov.doorman.core.{JwtIssuer, SessionManager, UserService}
+import cats.implicits._
+import com.akolov.doorman.core.SessionManager
 import com.google.api.client.auth.oauth2._
 import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.http.{BasicAuthentication, GenericUrl}

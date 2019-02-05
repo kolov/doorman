@@ -2,8 +2,10 @@ package com.akolov.doorman.core
 
 import cats._
 import cats.data._
-import cats.effect.Effect
+import cats.effect.{Effect, IO}
 import cats.implicits._
+import com.akolov.doorman.{AppUser, DoormanClient}
+import com.akolov.doorman.ServerConfig.doormanClient
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.Cookie
 import org.http4s.server.AuthMiddleware
@@ -11,10 +13,14 @@ import org.http4s.{AuthedRequest, Request, Response, ResponseCookie, Status}
 
 case class UserAndCookie[User](user: User, cookie: Option[String])
 
-class SessionManager[F[_] : Effect, User](userService: Kleisli[OptionT[F, ?], Option[String], UserAndCookie[User]])
+class SessionManager[F[_] : Effect, User](doormanClient: DoormanClient[F, User])
   extends Http4sDsl[F] {
 
+  // userService: Kleisli[OptionT[F, ?], Option[String], UserAndCookie[User]]
   private val CookieName = "auth-cookie"
+
+  val userService: Kleisli[OptionT[F, ?], Option[String], UserAndCookie[User]] = new UserService[F, User](doormanClient).userService
+
 
   val middleware: AuthMiddleware[F, User] = { (service: Kleisli[OptionT[F, ?], AuthedRequest[F, User], Response[F]]) =>
     Kleisli { r: Request[F] =>

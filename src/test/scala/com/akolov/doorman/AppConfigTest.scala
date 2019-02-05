@@ -10,17 +10,13 @@ class AppConfigTest extends Specification {
     }
   }
 
-  private[this] def uriReturns200() =
-    AppConfig.oauthEntries(AppConfig.config) must beEqualTo(
-      Map("google" ->
-        OauthConfig(
-          userAuthorizationUri = "https://accounts.google.com/o/oauth2/v2/auth",
-          accessTokenUri = "https://www.googleapis.com/oauth2/v4/token",
-          userInfoUri = "https://www.googleapis.com/oauth2/v3/userinfo",
-          clientId = "set in env var",
-          clientSecret = "set in env var",
-          scope = List("openid", "email", "profile"),
-          redirectUrl = "http://localhost:8080/oauth/login")))
+  private[this] def uriReturns200() = {
+
+    val googleConfig = AppConfig.oauthEntries(AppConfig.config).get("google")
+
+    googleConfig.get.userAuthorizationUri must beEqualTo("https://accounts.google.com/o/oauth2/v2/auth")
+    googleConfig.get.clientId must beEqualTo("set in env var")
+  }
 
 
 }

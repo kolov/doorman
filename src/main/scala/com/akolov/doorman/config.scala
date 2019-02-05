@@ -1,18 +1,14 @@
 package com.akolov.doorman
 
 import cats._
-import cats.implicits._
 import cats.data._
 import cats.effect.{ContextShift, IO, Timer}
-import com.akolov.doorman.core.{JwtIssuer, SessionManager, UserAndCookie, UserService}
-import com.auth0.jwt.algorithms.Algorithm
+import com.akolov.doorman.core.SessionManager
 import com.typesafe.config.{Config, ConfigFactory, ConfigList, ConfigObject}
+import org.http4s._
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.server.Router
 import org.http4s.server.middleware.{CORS, CORSConfig}
-import org.http4s.circe.{jsonDecoder, jsonEncoder, jsonEncoderOf, jsonOf}
-import org.http4s._
-import org.http4s.dsl.io._
 
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -28,12 +24,10 @@ object ServerConfig {
       maxAge = 1.day.toSeconds
     )
 
-  val jwtIssuer = new JwtIssuer("thisapp", Algorithm.HMAC256("dsdfdsfdsfdsf"))
-
   val doormanClient : DoormanClient[IO, AppUser] =  SimpleDoormanClient
-  val userService: Kleisli[OptionT[IO, ?], Option[String], UserAndCookie[AppUser]] = new UserService(doormanClient).userService
 
-  val sessionManager = new SessionManager[IO, AppUser](userService)
+
+  val sessionManager = new SessionManager[IO, AppUser](doormanClient)
 
 
   def oauthService(implicit cs: ContextShift[IO]): Kleisli[IO, Config, OauthService[IO, AppUser]] =
