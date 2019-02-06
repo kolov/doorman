@@ -26,7 +26,7 @@ object ServerConfig {
       maxAge = 1.day.toSeconds
     )
 
-  val doormanClient : Doorman[IO, AppUser] =  SimpleDoormanClient
+  val doormanClient : Doorman[IO, AppUser] =  SimpleDoorman
 
 
   val sessionManager = new SessionManager[IO, AppUser](doormanClient)

@@ -46,13 +46,13 @@ Add routes for Oauth2 login:
 
       def routes: HttpRoutes[F] = HttpRoutes.of[F] {
       
-        val methods = new OauthMethods[F, User](config, clientResource, sessionManager)
+        val oauth = new OauthMethods[F, User](config, clientResource, sessionManager)
         
         case GET -> Root / "login" / configname =>
-          methods.login(configname)
+          oauth.login(configname)
     
         case GET -> Root / "oauth" / "login" / configname :? CodeMatcher(code) =>
-          methods.callback(configname, code)
+          oauth.callback(configname, code)
     
       }      
       

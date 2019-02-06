@@ -1,5 +1,6 @@
 package com.akolov.doorman
 
+import cats.implicits._
 import cats.effect.{ExitCode, IO, IOApp}
 import org.http4s.server.blaze.BlazeServerBuilder
 

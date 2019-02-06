@@ -35,6 +35,8 @@ class OauthMethods[F[_] : Effect : Monad, User](configs: Map[String, OauthConfig
                                                ) extends Http4sDsl[F] {
 
 
+  implicit val jsonObjectDecoder: EntityDecoder[F, JsonObject] = jsonOf[F, JsonObject]
+
   def login(configname: String) = {
     val redirectUri: F[Option[Uri]] = (for {
       config <- OptionT.fromOption[F](configs.get(configname))
@@ -56,7 +58,7 @@ class OauthMethods[F[_] : Effect : Monad, User](configs: Map[String, OauthConfig
     responseMoved.flatMap(_.getOrElse(BadRequest(s"No configuration for oauth $configname")))
   }
 
-  def callback(configname: String, code: String) = {
+  def callback(configname: String, code: String): F[Response[F]] = {
     val userInfo: F[Option[JsonObject]] = (for {
       config <- OptionT.fromOption[F](configs.get(configname))
       resp = new AuthorizationCodeTokenRequest(new NetHttpTransport, new JacksonFactory,
@@ -77,19 +79,15 @@ class OauthMethods[F[_] : Effect : Monad, User](configs: Map[String, OauthConfig
       val resp: Option[F[Response[F]]] = ou.map { json =>
 
         val dataMap = json.toMap.mapValues(_.toString)
-        val resp: F[Response[F]] = Ok("found user")
+        val resp: F[Response[F]] = Ok(s"Constructing user from data $dataMap")
         resp.flatMap { (r: Response[F]) =>
-          val fu: F[User] = sessionManager.doormanClient.fromProvider(dataMap)
-          val xxx: F[Response[F]] = fu.flatMap(u => sessionManager.userRegistered(u, r))
-          xxx
+            sessionManager.doorman.fromProvider(configname, dataMap).flatMap(u => sessionManager.userRegistered(u, r))
         }
       }
-      resp.getOrElse(BadRequest("xx"))
+      resp.getOrElse(BadRequest(""))
 
     }
   }
-
-  // returns F[Response[F]]
 
   def getUserInfo(accessToken: String, userInfoUri: String): F[Option[JsonObject]] = {
 
@@ -112,12 +110,8 @@ class OauthMethods[F[_] : Effect : Monad, User](configs: Map[String, OauthConfig
       }
     }
 
-    implicit val jof: EntityDecoder[F, JsonObject] = jsonOf[F, JsonObject]
-
     clientResource.use { (client: Client[F]) =>
-      val r: F[JsonObject] = client.expect[JsonObject](request)
-      println(s"r = $r")
-      r.map { user => println(s"user=$user"); Some(user) }
+      client.expect[JsonObject](request).map { user => println(s"user=$user"); Some(user) }
     }
 
   }

@@ -15,13 +15,12 @@ object SessionManager {
   def apply[F[_] : Effect, User](doormanClient: Doorman[F, User]) = new SessionManager(doormanClient)
 }
 
-class SessionManager[F[_] : Effect, User](val doormanClient: Doorman[F, User])
+class SessionManager[F[_] : Effect, User](val doorman: Doorman[F, User])
   extends Http4sDsl[F] {
 
-  // userService: Kleisli[OptionT[F, ?], Option[String], UserAndCookie[User]]
-  private val CookieName = "auth-cookie"
+  private val CookieName = doorman.config.cookieName
 
-  val userService: Kleisli[OptionT[F, ?], Option[String], UserAndCookie[User]] = new UserService[F, User](doormanClient).userService
+  val userService: Kleisli[OptionT[F, ?], Option[String], UserAndCookie[User]] = new UserService[F, User](doorman).userService
 
 
   val middleware: AuthMiddleware[F, User] = { (service: Kleisli[OptionT[F, ?], AuthedRequest[F, User], Response[F]]) =>
@@ -36,7 +35,7 @@ class SessionManager[F[_] : Effect, User](val doormanClient: Doorman[F, User])
   }
 
   def userRegistered(user: User, response: Response[F]): F[Response[F]] =
-    Monad[F].pure(response.addCookie(CookieName, ""))
+    Monad[F].pure(response.addCookie(CookieName, doorman.toCookie(user)))
 
   private val userFromCookie: Kleisli[OptionT[F, ?], Request[F], UserAndCookie[User]] = Kleisli { (req: Request[F]) =>
     val cookieValue: Option[String] = Cookie.from(req.headers)

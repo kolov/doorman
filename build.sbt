@@ -13,6 +13,7 @@ lazy val testDependencies = Seq(
   "org.specs2" %% "specs2-core" % Specs2Version % "test",
   "org.specs2" %% "specs2-mock" % Specs2Version % "test",
 )
+
 lazy val core = (project in file("core")).settings(
   commonSettings,
   libraryDependencies ++= Seq(
@@ -20,21 +21,25 @@ lazy val core = (project in file("core")).settings(
     "org.http4s" %% "http4s-blaze-client" % Http4sVersion,
     "org.http4s" %% "http4s-circe" % Http4sVersion,
     "org.http4s" %% "http4s-dsl" % Http4sVersion,
-    "ch.qos.logback" % "logback-classic" % LogbackVersion,
-    "com.auth0" % "java-jwt" % "3.2.0",
     "com.google.oauth-client" % "google-oauth-client" % GoogleOauthClientVersion,
     "com.google.http-client" % "google-http-client-jackson" % GoogleOauthClientVersion,
-    "com.typesafe" % "config" % "1.3.2",
+
     "io.circe" %% "circe-generic" % CirceVersion,
     "io.circe" %% "circe-parser" % CirceVersion,
-  ) ++ testDependencies
+  ) ++ testDependencies,
+  publishTo := Some("Sonatype Release Nexus" at "https://oss.sonatype.org/content/repositories/releases"),
+  credentials += Credentials(Path.userHome / ".sbt" / ".credentials")
 )
 
 lazy val demo = (project in file("demo"))
   .dependsOn(core)
   .settings(
     commonSettings,
-    libraryDependencies ++= testDependencies
+    libraryDependencies ++= Seq(
+      "com.auth0" % "java-jwt" % "3.2.0",
+      "com.typesafe" % "config" % "1.3.2",
+      "ch.qos.logback" % "logback-classic" % LogbackVersion,
+    ) ++testDependencies
   )
 
 lazy val root = (project in file("."))

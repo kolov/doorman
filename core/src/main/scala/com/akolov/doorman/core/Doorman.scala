@@ -2,13 +2,15 @@ package com.akolov.doorman.core
 
 import cats.Monad
 
-trait Doorman[F[_], User] {
-  //  type User
+case class DoormanConfig( cookieName: String)
 
+trait Doorman[F[_], User] {
+
+  def config: DoormanConfig
   /**
   Create User from Oauth user data
    */
-  def fromProvider(data: Map[String, String]): F[User]
+  def fromProvider(provider: String, data: Map[String, String]): F[User]
 
   /**
   Create a non-authenticated user

@@ -4,25 +4,18 @@ import java.util.UUID
 
 import cats.Monad
 import cats.effect.{IO, Sync}
-import com.akolov.doorman.core.Doorman
+import com.akolov.doorman.core.{Doorman, DoormanConfig}
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 
 import scala.util.Try
 
-// Concrete
+case class OauthIdentity(provider: String, sub: String)
 
-case class AppUser(uuid: String, identity: Option[String] = None)
+case class AppUser(uuid: String, identity: Option[OauthIdentity] = None, name: Option[String] = None)
 
 
-object AppUser {
-
-  def create[F[_] : Sync]: F[AppUser] = Sync[F].pure(new AppUser(UUID.randomUUID.toString))
-
-  def forProvider(uuid: String, identity: Option[String]): AppUser = new AppUser(uuid, identity)
-}
-
-object SimpleDoormanClient extends Doorman[IO, AppUser] {
+object SimpleDoorman extends Doorman[IO, AppUser] {
   //  override type User = AppUser
 
   private val name = "MyApp"
@@ -33,28 +26,40 @@ object SimpleDoormanClient extends Doorman[IO, AppUser] {
     .withIssuer(name)
     .build()
 
-  override def fromProvider(data: Map[String, String]): IO[AppUser] = {
-    val sub = data.get("sub")
-    IO.delay(AppUser(UUID.randomUUID.toString, sub))
+  override def fromProvider(provider: String, data: Map[String, String]): IO[AppUser] = {
+    IO.delay(AppUser(UUID.randomUUID.toString, data.get("sub").map(OauthIdentity(provider, _)), data.get("firstName")))
   }
 
-  override def create()(implicit ev: Monad[IO]): IO[AppUser] = IO.delay(AppUser(UUID.randomUUID.toString, None))
+  override def create()(implicit ev: Monad[IO]): IO[AppUser] = IO.delay(AppUser(UUID.randomUUID.toString))
 
   override def toCookie(user: AppUser): String = {
     val builder = JWT.create()
       .withIssuer(name)
       .withClaim("sub", user.uuid)
 
-    user.identity
-      .map(p => builder.withClaim("provider", p))
+    val builder0 = user.identity
+      .map(p => builder.withClaim("provider", p.provider).withClaim("providerId", p.sub))
       .getOrElse(builder)
-      .sign(algorithm)
+
+    val builder1 = user.name
+      .map(name => builder.withClaim("given_name", name))
+      .getOrElse(builder0)
+
+    builder1.sign(algorithm)
   }
 
   def toUser(token: String): Option[AppUser] =
     Try(verifier.verify(token)).toOption.map { payload =>
-      AppUser(payload.getSubject, Option(payload.getClaim("provider").asString))
+      val identity = for {
+        provider <- Option(payload.getClaim("provider").asString)
+        providerId <- Option(payload.getClaim("providerId").asString)
+      } yield ( OauthIdentity(provider, providerId) )
+
+      AppUser(payload.getSubject, identity, Option(payload.getClaim("name").asString))
     }
 
+  override def config: DoormanConfig = DoormanConfig(
+    cookieName = "demo-auth"
+  )
 }
 
