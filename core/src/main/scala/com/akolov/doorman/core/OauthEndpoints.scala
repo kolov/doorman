@@ -1,13 +1,9 @@
 package com.akolov.doorman.core
 
 import cats._
+import cats.implicits._
 import cats.data._
 import cats.effect._
-import cats.implicits._
-import com.google.api.client.auth.oauth2._
-import com.google.api.client.http.javanet.NetHttpTransport
-import com.google.api.client.http.{BasicAuthentication, GenericUrl}
-import com.google.api.client.json.jackson.JacksonFactory
 import io.circe._
 import org.http4s.CacheDirective.`no-cache`
 import org.http4s.circe.jsonOf
@@ -58,50 +54,49 @@ class OauthMethods[F[_] : Effect : Monad, User](clientResource: Resource[F, Clie
 
   }
 
+  type ErrorOr[A] = EitherT[F, String, A]
+
+  implicit class optionToErrorOr[A](o: Option[A]) {
+    def toErrorOr(ifNone: String) = EitherT.fromOption[F](o, ifNone)
+  }
+
+  implicit class eitherToErrorOr[E, A](e: Either[E, A]) {
+    def toErrorOr() = EitherT.fromEither[F](e.leftMap(_.toString))
+  }
+
   def callback(configname: String, code: String): F[Response[F]] = {
-    val userInfo: F[Option[JsonObject]] = (for {
-      config <- OptionT.fromOption[F](config.provider(configname))
-      resp = new AuthorizationCodeTokenRequest(new NetHttpTransport, new JacksonFactory,
-        new GenericUrl(config.accessTokenUri), code)
-        .setRedirectUri(config.redirectUrl)
-        .setClientAuthentication(
-          new BasicAuthentication(config.clientId, config.clientSecret))
-        .execute()
+    val resp: EitherT[F, String, JsonObject] = for {
+      config <- config.provider(configname).toErrorOr("No config")
+      base <- Uri.fromString(config.accessTokenUri).toErrorOr
+      uri = Uri(base.scheme, base.authority, base.path,
+        Query(("redirect_uri", Some(config.redirectUrl)),
+          ("client_id", Some(config.clientId)),
+          ("client_secret", Some(config.clientSecret)),
+          ("code", Some(code)),
+          ("grant_type", Some("authorization_code"))),
+        base.fragment)
 
-      credential = new Credential(BearerToken.authorizationHeaderAccessMethod())
-      _ = credential.setFromTokenResponse(resp)
-      userInfo <- OptionT(getUserInfo(credential.getAccessToken, config.userInfoUri))
+      request = Request[F](method = POST,
+        uri = uri,
+        headers = Headers(Accept(MediaType.application.json))
+      )
+      resp <- EitherT.liftF[F, String, JsonObject](clientResource.use { client =>
+        client.expect[JsonObject](request)
+      })
+      access_token <- resp.toMap.get("access_token").flatMap(_.asString).toErrorOr("no access_token")
+      uriUser <- Uri.fromString(config.userInfoUri).toErrorOr
+      respUser <- EitherT.liftF[F, String, JsonObject](clientResource.use { client =>
+        client.expect[JsonObject](Request[F](method = GET,
+          uri = uriUser,
+          headers = Headers(Accept(MediaType.application.json),
+            Authorization(Credentials.Token(AuthScheme.Bearer, access_token)))
+        ))
+      })
 
-    } yield userInfo).value
+    } yield respUser
 
-
-    userInfo.flatMap { (ou: Option[JsonObject]) =>
-      val resp: Option[F[Response[F]]] = ou.map { json =>
-
-        val dataMap = json.toMap.mapValues(_.toString)
-        val resp: F[Response[F]] = Ok(s"Constructing user from data $dataMap")
-        resp.flatMap { (r: Response[F]) =>
-          sessionManager.doorman.fromProvider(configname, dataMap).flatMap(u => sessionManager.userRegistered(u, r))
-        }
-      }
-      resp.getOrElse(BadRequest(""))
-
-    }
-  }
-
-  def getUserInfo(accessToken: String, userInfoUri: String): F[Option[JsonObject]] = {
-
-    val request: Request[F] = Request[F](method = GET,
-      uri = Uri.unsafeFromString(userInfoUri),
-      headers = Headers(
-        Authorization(Credentials.Token(AuthScheme.Bearer, accessToken)),
-        Accept(MediaType.application.json)))
-
-    clientResource.use { (client: Client[F]) =>
-      client.expect[JsonObject](request).map(Some(_))
-    }
+    resp.map(c => Ok(c.toString)).value.flatMap(_.toOption.getOrElse(BadRequest("???")))
 
   }
-
 
 }

@@ -2,21 +2,18 @@ package com.akolov.doorman
 
 import cats._
 import cats.data._
-import cats.implicits._
 import cats.effect.{ContextShift, IO, Timer}
+import cats.implicits._
 import com.akolov.doorman.core.{Doorman, DoormanConfig, OauthConfig, SessionManager}
 import com.typesafe.config.{Config, ConfigFactory, ConfigList, ConfigObject}
 import org.http4s._
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.server.Router
 import org.http4s.server.middleware.{CORS, CORSConfig}
-import org.http4s.dsl.io._
-import org.http4s.implicits._
 
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
-import scala.util.Try
 
 object ServerConfig {
 

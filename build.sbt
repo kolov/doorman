@@ -21,9 +21,6 @@ lazy val core = (project in file("core")).settings(
     "org.http4s" %% "http4s-blaze-client" % Http4sVersion,
     "org.http4s" %% "http4s-circe" % Http4sVersion,
     "org.http4s" %% "http4s-dsl" % Http4sVersion,
-    "com.google.oauth-client" % "google-oauth-client" % GoogleOauthClientVersion,
-    "com.google.http-client" % "google-http-client-jackson" % GoogleOauthClientVersion,
-
     "io.circe" %% "circe-generic" % CirceVersion,
     "io.circe" %% "circe-parser" % CirceVersion,
   ) ++ testDependencies,
