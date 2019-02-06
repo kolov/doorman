@@ -8,16 +8,13 @@ import com.google.api.client.auth.oauth2._
 import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.http.{BasicAuthentication, GenericUrl}
 import com.google.api.client.json.jackson.JacksonFactory
-import io.circe.Decoder.Result
 import io.circe._
 import org.http4s.CacheDirective.`no-cache`
 import org.http4s.circe.jsonOf
 import org.http4s.client.Client
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.{Accept, Authorization, Location, `Cache-Control`}
-import org.http4s.{AuthScheme, Credentials, EntityDecoder, Headers, MediaType, Request, Response, Uri}
-
-import scala.collection.JavaConverters._
+import org.http4s.{AuthScheme, Credentials, EntityDecoder, Headers, MediaType, Query, Request, Response, Uri}
 
 
 case class OauthConfig(userAuthorizationUri: String,
@@ -38,29 +35,27 @@ class OauthMethods[F[_] : Effect : Monad, User](clientResource: Resource[F, Clie
                                                 config: DoormanConfig
                                                ) extends Http4sDsl[F] {
 
-
-
   implicit val jsonObjectDecoder: EntityDecoder[F, JsonObject] = jsonOf[F, JsonObject]
 
   def login(configname: String): F[Response[F]] = {
-    val redirectUri: F[Option[Uri]] = (for {
-      config <- OptionT.fromOption[F](config.provider(configname))
-      url = new AuthorizationRequestUrl(config.userAuthorizationUri, config.clientId,
-        List("code").asJava)
-        .setScopes(config.scope.toList.asJava)
-        .setRedirectUri(config.redirectUrl).build
-      option <- OptionT.fromOption[F](Uri.fromString(url).toOption)
-    } yield option).value
+    val uri: Option[Uri] = for {
+      config <- config.provider(configname)
+      base <- Uri.fromString(config.userAuthorizationUri).toOption
+      uri = Uri(base.scheme, base.authority, base.path,
+        Query(("redirect_uri", Some(config.redirectUrl)),
+          ("client_id", Some(config.clientId)),
+          ("response_type", Some("code")),
+          ("scope", Some(config.scope.mkString(" ")))),
+        base.fragment)
+    } yield uri
 
-    val responseMoved: F[Option[F[Response[F]]]] = redirectUri.map { (ou: Option[Uri]) =>
-      ou.map { uri =>
-        MovedPermanently(
-          location = Location(uri),
-          body = "",
-          headers = `Cache-Control`(NonEmptyList(`no-cache`(), Nil)))
-      }
-    }
-    responseMoved.flatMap(_.getOrElse(BadRequest(s"No configuration for oauth $configname")))
+    val responseMoved: Option[F[Response[F]]] = uri.map(u => MovedPermanently(
+      location = Location(u),
+      body = "",
+      headers = `Cache-Control`(NonEmptyList(`no-cache`(), Nil))))
+
+    responseMoved.getOrElse(BadRequest(s"Bad or missing configuration for $configname"))
+
   }
 
   def callback(configname: String, code: String): F[Response[F]] = {
@@ -86,7 +81,7 @@ class OauthMethods[F[_] : Effect : Monad, User](clientResource: Resource[F, Clie
         val dataMap = json.toMap.mapValues(_.toString)
         val resp: F[Response[F]] = Ok(s"Constructing user from data $dataMap")
         resp.flatMap { (r: Response[F]) =>
-            sessionManager.doorman.fromProvider(configname, dataMap).flatMap(u => sessionManager.userRegistered(u, r))
+          sessionManager.doorman.fromProvider(configname, dataMap).flatMap(u => sessionManager.userRegistered(u, r))
         }
       }
       resp.getOrElse(BadRequest(""))
@@ -103,7 +98,7 @@ class OauthMethods[F[_] : Effect : Monad, User](clientResource: Resource[F, Clie
         Accept(MediaType.application.json)))
 
     clientResource.use { (client: Client[F]) =>
-      client.expect[JsonObject](request).map ( Some(_) )
+      client.expect[JsonObject](request).map(Some(_))
     }
 
   }

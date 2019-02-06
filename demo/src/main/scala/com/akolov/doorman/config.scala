@@ -16,6 +16,7 @@ import org.http4s.implicits._
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
+import scala.util.Try
 
 object ServerConfig {
 
@@ -37,15 +38,6 @@ object ServerConfig {
       sessionManager = new SessionManager[IO, AppUser](doormanClient, doormanConfig)
     } yield sessionManager
 
-  def oauthService(implicit cs: ContextShift[IO]): Kleisli[IO, Config, OauthService[IO, AppUser]] =
-    for {
-      config <- data.Kleisli.ask[IO, Config]
-      doormanConfig = AppConfig.demoConfig(config)
-      client = BlazeClientBuilder[IO](global).resource
-      sessionManager = new SessionManager[IO, AppUser](doormanClient, doormanConfig)
-      service = new OauthService[IO, AppUser](doormanConfig, client, doormanClient, sessionManager)
-    } yield service
-
 
   implicit class KleisliResponseOps[A](self: Kleisli[OptionT[IO, ?], A, Response[IO]]) {
     def orNotFound: Kleisli[IO, A, Response[IO]] =
@@ -54,7 +46,11 @@ object ServerConfig {
 
   def theService(implicit timer: Timer[IO], cs: ContextShift[IO]) =
     for {
-      oauthService <- oauthService
+      config <- data.Kleisli.ask[IO, Config]
+      doormanConfig = AppConfig.demoConfig(config)
+      client = BlazeClientBuilder[IO](global).resource
+      sessionManager = new SessionManager[IO, AppUser](doormanClient, doormanConfig)
+      oauthService = new OauthService[IO, AppUser](doormanConfig, client, doormanClient, sessionManager)
       helloWorldService = new DemoService[IO, AppUser](sessionManager)
       router = Router(
         "/api/v1" -> CORS(helloWorldService.routes <+> oauthService.routes, corsConfig),
@@ -68,8 +64,6 @@ object AppConfig {
 
   val config = ConfigFactory.load()
 
-  // FIXME: use some config lib like cactus
-
   def oauthEntries(config: Config): Map[String, OauthConfig] = {
     val oauthConfigs = config.getValue("oauth").asInstanceOf[ConfigObject]
     val entries = oauthConfigs.keySet.asScala.map { name =>
@@ -82,7 +76,7 @@ object AppConfig {
         clientId = g.getString("clientId"),
         clientSecret = g.getString("clientSecret"),
         scope = configObject.get("scope").asInstanceOf[ConfigList].iterator().asScala.toList.map(_.unwrapped.toString),
-        redirectUrl = g.getString("redirectUrl")))
+        redirectUrl = g.getString("redirectUrl") ).toOption))
     }
     entries.toMap
   }
