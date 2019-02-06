@@ -7,7 +7,8 @@ This project has not reached releasable state, do not use yet!
 # Usage
 
 Configure a `Doorman`:
-    ```scala
+
+```scala
     trait Doorman[F[_], User] {
          /**
          Create User from Oauth user data
@@ -31,7 +32,7 @@ Configure a `Doorman`:
     }```
    
    
-Configure outh providers:
+Configure oauth providers:
 ```yaml
  oauth {
   google {
@@ -60,11 +61,11 @@ Configure outh providers:
     redirectUrl: "http://localhost:8080/api/v1/oauth/login/github"
     redirectUrl: ${?OAUTH2_GITHUB_REDIRECT_URL}
   }
-````
+```
    
    
 Provide user information in the service:
-    ```scala
+```scala
     val sessionManager = SessionManager(doormanClient)
     val routes: HttpRoutes[F] = sessionManager.middleware(
         AuthedService {
@@ -76,7 +77,7 @@ Provide user information in the service:
       
 Add routes for Oauth2 login:
 
-    ```scala
+```scala
       def routes: HttpRoutes[F] = HttpRoutes.of[F] {
       
         val oauth = new OauthMethods[F, User](config, clientResource, sessionManager)
