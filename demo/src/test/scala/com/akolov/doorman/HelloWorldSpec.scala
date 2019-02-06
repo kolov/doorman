@@ -1,12 +1,16 @@
 package com.akolov.doorman
 
-import cats.effect.IO
+import java.util.concurrent.Executors
+
+import cats.effect.{ContextShift, IO}
 import org.http4s._
 import org.http4s.implicits._
 import org.http4s.server.Router
 import org.specs2.matcher.MatchResult
 import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
+
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
 
 
 class HelloWorldSpec extends Specification
@@ -21,8 +25,13 @@ class HelloWorldSpec extends Specification
     }
   }
 
+  val executionContext: ExecutionContextExecutorService =
+    ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(8))
 
-  val sessionManager = ServerConfig.sessionManager
+  implicit lazy val contextShift: ContextShift[IO] =
+    IO.contextShift(executionContext) // ceremony 1
+
+  val sessionManager = ServerConfig.sessionManager.run(AppConfig.config).unsafeRunSync
 
   private[this] val retHelloWorld: Response[IO] = {
     val getHW = Request[IO](Method.GET, Uri.uri("/api/v1/hello/world"))

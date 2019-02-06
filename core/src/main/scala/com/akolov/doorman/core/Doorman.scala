@@ -2,11 +2,14 @@ package com.akolov.doorman.core
 
 import cats.Monad
 
-case class DoormanConfig( cookieName: String)
+trait DoormanConfig {
+  val cookieName: String
+
+  def provider(provider: String): Option[OauthConfig]
+}
 
 trait Doorman[F[_], User] {
 
-  def config: DoormanConfig
   /**
   Create User from Oauth user data
    */
@@ -26,5 +29,7 @@ trait Doorman[F[_], User] {
     * Unmarshall cookie to User
     */
   def toUser(cookie: String): Option[User]
+
+
 
 }
