@@ -12,13 +12,13 @@ import org.http4s.{AuthedRequest, Request, Response, Status}
 case class UserAndCookie[User](user: User, cookie: Option[String])
 
 object SessionManager {
-  def apply[F[_] : Effect, User](doormanClient: Doorman[F, User]) = new SessionManager(doormanClient)
+  def apply[F[_] : Effect, User](doorman: Doorman[F, User], doormanConfig: DoormanConfig) = new SessionManager(doorman, doormanConfig)
 }
 
-class SessionManager[F[_] : Effect, User](val doorman: Doorman[F, User])
+class SessionManager[F[_] : Effect, User](val doorman: Doorman[F, User], doormanConfig: DoormanConfig)
   extends Http4sDsl[F] {
 
-  private val CookieName = doorman.config.cookieName
+  private val CookieName = doormanConfig.cookieName
 
   val userService: Kleisli[OptionT[F, ?], Option[String], UserAndCookie[User]] = new UserService[F, User](doorman).userService
 

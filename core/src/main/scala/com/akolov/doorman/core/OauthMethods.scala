@@ -29,17 +29,22 @@ case class OauthConfig(userAuthorizationUri: String,
                        redirectUrl: String
                       )
 
-class OauthMethods[F[_] : Effect : Monad, User](configs: Map[String, OauthConfig],
-                                                clientResource: Resource[F, Client[F]],
-                                                sessionManager: SessionManager[F, User]
+/**
+  * This class provides the necessary endpoints to handle Oauth login. They need to be mapped to
+  * routes.
+  */
+class OauthMethods[F[_] : Effect : Monad, User](clientResource: Resource[F, Client[F]],
+                                                sessionManager: SessionManager[F, User],
+                                                config: DoormanConfig
                                                ) extends Http4sDsl[F] {
+
 
 
   implicit val jsonObjectDecoder: EntityDecoder[F, JsonObject] = jsonOf[F, JsonObject]
 
-  def login(configname: String) = {
+  def login(configname: String): F[Response[F]] = {
     val redirectUri: F[Option[Uri]] = (for {
-      config <- OptionT.fromOption[F](configs.get(configname))
+      config <- OptionT.fromOption[F](config.provider(configname))
       url = new AuthorizationRequestUrl(config.userAuthorizationUri, config.clientId,
         List("code").asJava)
         .setScopes(config.scope.toList.asJava)
@@ -60,7 +65,7 @@ class OauthMethods[F[_] : Effect : Monad, User](configs: Map[String, OauthConfig
 
   def callback(configname: String, code: String): F[Response[F]] = {
     val userInfo: F[Option[JsonObject]] = (for {
-      config <- OptionT.fromOption[F](configs.get(configname))
+      config <- OptionT.fromOption[F](config.provider(configname))
       resp = new AuthorizationCodeTokenRequest(new NetHttpTransport, new JacksonFactory,
         new GenericUrl(config.accessTokenUri), code)
         .setRedirectUri(config.redirectUrl)
@@ -97,21 +102,8 @@ class OauthMethods[F[_] : Effect : Monad, User](configs: Map[String, OauthConfig
         Authorization(Credentials.Token(AuthScheme.Bearer, accessToken)),
         Accept(MediaType.application.json)))
 
-    val decoderJson = implicitly[Decoder[Json]]
-
-    implicit val decoderJsonObject = new Decoder[JsonObject] {
-      override def apply(c: HCursor): Result[JsonObject] = {
-        decoderJson.apply(c).flatMap { j: Json =>
-          j.asObject match {
-            case Some(o) => Right(o)
-            case None => Left(DecodingFailure("Not an object", List()))
-          }
-        }
-      }
-    }
-
     clientResource.use { (client: Client[F]) =>
-      client.expect[JsonObject](request).map { user => println(s"user=$user"); Some(user) }
+      client.expect[JsonObject](request).map ( Some(_) )
     }
 
   }

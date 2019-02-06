@@ -4,7 +4,7 @@ import java.util.UUID
 
 import cats.Monad
 import cats.effect.{IO, Sync}
-import com.akolov.doorman.core.{Doorman, DoormanConfig}
+import com.akolov.doorman.core.{Doorman, DoormanConfig, OauthConfig}
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 
@@ -58,8 +58,6 @@ object SimpleDoorman extends Doorman[IO, AppUser] {
       AppUser(payload.getSubject, identity, Option(payload.getClaim("name").asString))
     }
 
-  override def config: DoormanConfig = DoormanConfig(
-    cookieName = "demo-auth"
-  )
+
 }
 
