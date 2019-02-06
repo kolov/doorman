@@ -69,14 +69,13 @@ object AppConfig {
     val entries = oauthConfigs.keySet.asScala.map { name =>
       val configObject = oauthConfigs.get(name).asInstanceOf[ConfigObject]
       val g = configObject.toConfig
-      (name, OauthConfig
-      (userAuthorizationUri = g.getString("userAuthorizationUri"),
+      (name, OauthConfig(userAuthorizationUri = g.getString("userAuthorizationUri"),
         accessTokenUri = g.getString("accessTokenUri"),
         userInfoUri = g.getString("userInfoUri"),
         clientId = g.getString("clientId"),
         clientSecret = g.getString("clientSecret"),
         scope = configObject.get("scope").asInstanceOf[ConfigList].iterator().asScala.toList.map(_.unwrapped.toString),
-        redirectUrl = g.getString("redirectUrl") ).toOption))
+        redirectUrl = g.getString("redirectUrl")))
     }
     entries.toMap
   }
