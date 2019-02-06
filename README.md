@@ -29,10 +29,12 @@ Configure a `Doorman`:
            * Unmarshall cookie to User
            */
          def toUser(cookie: String): Option[User]
-    }```
+    }
+```
    
    
 Configure oauth providers:
+
 ```yaml
  oauth {
   google {
@@ -72,7 +74,8 @@ Provide user information in the service:
           case GET -> Root / "hello"  as user =>
             Ok(Json.obj("message" -> Json.fromString(s"Hello, ${user}")))
         }
-      )```
+      )
+```
       
       
 Add routes for Oauth2 login:
@@ -88,5 +91,6 @@ Add routes for Oauth2 login:
         case GET -> Root / "oauth" / "login" / configname :? CodeMatcher(code) =>
           oauth.callback(configname, code)
     
-      }      ```
+      }      
+```
       
