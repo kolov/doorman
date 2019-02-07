@@ -1,3 +1,5 @@
+import sbt.{Credentials, Path}
+
 val Http4sVersion = "0.20.0-M3"
 val Specs2Version = "4.1.0"
 val LogbackVersion = "1.2.3"
@@ -5,9 +7,12 @@ val GoogleOauthClientVersion = "1.22.0"
 val CirceVersion = "0.10.1"
 
 ThisBuild / organization := "com.akolov"
-ThisBuild / version := "0.1.0-SNAPSHOT"
+//ThisBuild / version := "0.1.0-SNAPSHOT"
 ThisBuild / name := "doorman"
 ThisBuild / scalaVersion := "2.12.8"
+
+publishTo := Some("releases" at "https://oss.sonatype.org/service/local/staging/deploy/maven2")
+credentials += Credentials(Path.userHome / ".sonatype" / ".credentials")
 
 lazy val testDependencies = Seq(
   "org.specs2" %% "specs2-core" % Specs2Version % "test",
