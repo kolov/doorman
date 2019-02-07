@@ -1,5 +1,5 @@
 import sbt.Keys.credentials
-import sbt.{Credentials, Path}
+import sbt.{Credentials, Developer, Path, ScmInfo, url}
 
 val Http4sVersion = "0.20.0-M3"
 val Specs2Version = "4.1.0"
@@ -7,10 +7,35 @@ val LogbackVersion = "1.2.3"
 val GoogleOauthClientVersion = "1.22.0"
 val CirceVersion = "0.10.1"
 
-ThisBuild / organization := "com.akolov"
-ThisBuild / name := "doorman"
-ThisBuild / scalaVersion := "2.12.8"
+organization := "com.akolov"
+name := "doorman"
+scalaVersion := "2.12.8"
 
+description := "Oauth2 authentication and user session middleware for http4s"
+licenses := Seq("MIT License" -> url("https://github.com/kolov/doorman/blob/master/LICENSE"))
+
+homepage := Some(url("https://github.com/kolov/doorman"))
+
+scmInfo := Some(
+  ScmInfo(
+    url("https://github.com/kolov/sbt-doorman"),
+    "scm:git@github.com:kolov/doorman.git"
+  )
+)
+
+developers := List(
+  Developer(
+    id    = "kolov",
+    name  = "Assen Kolov",
+    email = "assen.kolov@gmail.com",
+    url   = url("https://github.com/kolov")
+  )
+)
+
+lazy val commonSettings = Seq(
+  addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.6"),
+  addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.2.4"),
+)
 
 lazy val testDependencies = Seq(
   "org.specs2" %% "specs2-core" % Specs2Version % "test",
@@ -53,10 +78,7 @@ lazy val root = (project in file("."))
   tutTargetDirectory := (baseDirectory in Compile).value
 )
 
-lazy val commonSettings = Seq(
-  addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.6"),
-  addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.2.4")
-)
+
 
 enablePlugins(TutPlugin)
 
