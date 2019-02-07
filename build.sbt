@@ -1,3 +1,4 @@
+import sbt.Keys.credentials
 import sbt.{Credentials, Path}
 
 val Http4sVersion = "0.20.0-M3"
@@ -11,8 +12,6 @@ ThisBuild / organization := "com.akolov"
 ThisBuild / name := "doorman"
 ThisBuild / scalaVersion := "2.12.8"
 
-publishTo := Some("releases" at "https://oss.sonatype.org/service/local/staging/deploy/maven2")
-credentials += Credentials(Path.userHome / ".sonatype" / ".credentials")
 
 lazy val testDependencies = Seq(
   "org.specs2" %% "specs2-core" % Specs2Version % "test",
@@ -29,8 +28,9 @@ lazy val core = (project in file("core")).settings(
     "io.circe" %% "circe-generic" % CirceVersion,
     "io.circe" %% "circe-parser" % CirceVersion,
   ) ++ testDependencies,
-  publishTo := Some("Sonatype Release Nexus" at "https://oss.sonatype.org/content/repositories/releases"),
-  credentials += Credentials(Path.userHome / ".sbt" / ".credentials")
+  publishTo := Some("releases" at "https://oss.sonatype.org/service/local/staging/deploy/maven2"),
+  credentials += Credentials(Path.userHome / ".sonatype" / ".credentials")
+
 )
 
 lazy val demo = (project in file("demo"))
