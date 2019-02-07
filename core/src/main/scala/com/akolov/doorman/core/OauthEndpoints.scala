@@ -26,10 +26,10 @@ case class OauthConfig(userAuthorizationUri: String,
   * This class provides the necessary endpoints to handle Oauth login. They need to be mapped to
   * routes.
   */
-class OauthMethods[F[_] : Effect : Monad, User](clientResource: Resource[F, Client[F]],
-                                                sessionManager: SessionManager[F, User],
-                                                config: DoormanConfig
-                                               ) extends Http4sDsl[F] {
+class OauthEndpoints[F[_] : Effect : Monad, User](clientResource: Resource[F, Client[F]],
+                                                  doorman: Doorman[F, User],
+                                                  config: DoormanConfig
+                                                 ) extends Http4sDsl[F] {
 
   implicit val jsonObjectDecoder: EntityDecoder[F, JsonObject] = jsonOf[F, JsonObject]
 
@@ -64,8 +64,9 @@ class OauthMethods[F[_] : Effect : Monad, User](clientResource: Resource[F, Clie
     def toErrorOr() = EitherT.fromEither[F](e.leftMap(_.toString))
   }
 
-  def callback(configname: String, code: String): F[Response[F]] = {
-    val resp: EitherT[F, String, JsonObject] = for {
+  def callback(configname: String, code: String): F[Either[String, User]] = {
+
+    val user = for {
       config <- config.provider(configname).toErrorOr("No config")
       base <- Uri.fromString(config.accessTokenUri).toErrorOr
       uri = Uri(base.scheme, base.authority, base.path,
@@ -92,11 +93,14 @@ class OauthMethods[F[_] : Effect : Monad, User](clientResource: Resource[F, Clie
             Authorization(Credentials.Token(AuthScheme.Bearer, access_token)))
         ))
       })
+      optUser = doorman.fromProvider(configname, respUser.toMap.mapValues(_.toString))
+        .map(v => Either.cond(v.isDefined, v.get, "err"))
 
-    } yield respUser
+      user <- EitherT(optUser)
 
-    resp.map(c => Ok(c.toString)).value.flatMap(_.toOption.getOrElse(BadRequest("???")))
-
+    } yield user
+    user.value
   }
+
 
 }

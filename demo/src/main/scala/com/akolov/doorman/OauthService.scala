@@ -1,6 +1,7 @@
 package com.akolov.doorman
 
 import cats._
+import cats.implicits._
 import cats.effect._
 import com.akolov.doorman.core._
 import org.http4s.HttpRoutes
@@ -16,14 +17,18 @@ class OauthService[F[_] : Effect : Monad, User](config: DoormanConfig,
 
   object CodeMatcher extends QueryParamDecoderMatcher[String]("code")
 
-  val oauth = new OauthMethods[F, User](clientResource, sessionManager, config)
+  val oauth = new OauthEndpoints[F, User](clientResource, doormanClient, config)
 
   def routes: HttpRoutes[F] = HttpRoutes.of[F] {
     case GET -> Root / "login" / configname =>
       oauth.login(configname)
 
     case GET -> Root / "oauth" / "login" / configname :? CodeMatcher(code) =>
-      oauth.callback(configname, code)
+      val user: F[Either[String, User]] = oauth.callback(configname, code)
+      user.flatMap {
+        case Left(error) => Ok(s"Error: $error")
+        case Right(user) => Ok(s"User: $user").map(r => sessionManager.addUserCookie(user, r))
+      }
 
   }
 

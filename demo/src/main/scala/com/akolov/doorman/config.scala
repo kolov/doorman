@@ -26,8 +26,7 @@ object ServerConfig {
     )
 
   val doormanClient: Doorman[IO, AppUser] = SimpleDoorman
-
-
+  
   def sessionManager(implicit cs: ContextShift[IO]) =
     for {
       config <- data.Kleisli.ask[IO, Config]

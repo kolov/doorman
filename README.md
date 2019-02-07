@@ -9,27 +9,21 @@ This project has not reached releasable state, do not use yet!
 Configure a `Doorman`:
 
 ```scala
-    trait Doorman[F[_], User] {
-         /**
-         Create User from Oauth user data
-          */
-         def fromProvider(data: Map[String, String]): F[User]
-       
-         /**
-         Create a non-authenticated user
-          */
-         def create()(implicit ev: Monad[F]): F[User]
-       
-         /**
-           * marshall th user to a cookie
-           */
-         def toCookie(user: User): String
-       
-         /**
-           * Unmarshall cookie to User
-           */
-         def toUser(cookie: String): Option[User]
-    }
+trait Doorman[F[_], User] {
+
+  /** Create User from Oauth user data */
+  def fromProvider(provider: String, data: Map[String, String]): F[Option[User]]
+
+  /** Create a non-authenticated user */
+  def create()(implicit ev: Monad[F]): F[User]
+
+  /** Marshall User to a cookie */
+  def toCookie(user: User): String
+
+  /** Unmarshall cookie to User */
+  def toUser(cookie: String): F[Option[User]]
+
+}
 ```
    
    
@@ -66,7 +60,7 @@ Configure oauth providers:
 ```
    
    
-Provide user information in the service:
+To access user information in the service:
 ```scala
     val sessionManager = SessionManager(doormanClient)
     val routes: HttpRoutes[F] = sessionManager.middleware(
@@ -76,21 +70,23 @@ Provide user information in the service:
         }
       )
 ```
+Note that both authenticated and not-authenticated users are tracked with a cookie.
       
-      
-Add routes for Oauth2 login:
+To allow login, add routes for Oauth2 login:
 
 ```scala
-      def routes: HttpRoutes[F] = HttpRoutes.of[F] {
-      
-        val oauth = new OauthMethods[F, User](config, clientResource, sessionManager)
-        
-        case GET -> Root / "login" / configname =>
-          oauth.login(configname)
-    
-        case GET -> Root / "oauth" / "login" / configname :? CodeMatcher(code) =>
-          oauth.callback(configname, code)
-    
-      }      
+val oauth = new OauthEndpoints[F, User](clientResource, doormanClient, config)
+
+  def routes: HttpRoutes[F] = HttpRoutes.of[F] {
+    case GET -> Root / "login" / configname =>
+      oauth.login(configname)
+
+    case GET -> Root / "oauth" / "login" / configname :? CodeMatcher(code) =>
+      val user: F[Either[String, User]] = oauth.callback(configname, code)
+      user.flatMap {
+        case Left(error) => Ok(s"Error: $error")
+        case Right(user) => Ok(s"User: $user").map(r => sessionManager.addUserCookie(user, r))
+      }
+  }
 ```
       

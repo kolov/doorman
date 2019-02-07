@@ -3,61 +3,59 @@ package com.akolov.doorman
 import java.util.UUID
 
 import cats.Monad
-import cats.effect.{IO, Sync}
-import com.akolov.doorman.core.{Doorman, DoormanConfig, OauthConfig}
+import cats.effect.IO
+import com.akolov.doorman.core.Doorman
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 
 import scala.util.Try
 
-case class OauthIdentity(provider: String, sub: String)
-
-case class AppUser(uuid: String, identity: Option[OauthIdentity] = None, name: Option[String] = None)
+case class AppUser(uuid: String, name: Option[String] = None, data: Map[String, String] = Map())
 
 
-object SimpleDoorman extends Doorman[IO, AppUser] {
-  //  override type User = AppUser
+trait JwtIssuer {
 
   private val name = "MyApp"
 
-  private val algorithm = Algorithm.HMAC256("dsdfdsfdsfdsf") // TODO from config
+  private val algorithm = Algorithm.HMAC256("somesecret")
 
   private[this] val verifier = JWT.require(algorithm)
     .withIssuer(name)
     .build()
 
-  override def fromProvider(provider: String, data: Map[String, String]): IO[AppUser] = {
-    IO.delay(AppUser(UUID.randomUUID.toString, data.get("sub").map(OauthIdentity(provider, _)), data.get("firstName")))
-  }
-
-  override def create()(implicit ev: Monad[IO]): IO[AppUser] = IO.delay(AppUser(UUID.randomUUID.toString))
-
-  override def toCookie(user: AppUser): String = {
+  def toCookie(user: AppUser): String = {
     val builder = JWT.create()
       .withIssuer(name)
       .withClaim("sub", user.uuid)
 
-    val builder0 = user.identity
-      .map(p => builder.withClaim("provider", p.provider).withClaim("providerId", p.sub))
-      .getOrElse(builder)
-
     val builder1 = user.name
-      .map(name => builder.withClaim("given_name", name))
-      .getOrElse(builder0)
+      .map(name => builder.withClaim("name", name))
+      .getOrElse(builder)
 
     builder1.sign(algorithm)
   }
 
-  def toUser(token: String): Option[AppUser] =
+  def parseCookie(token: String): Option[AppUser] =
     Try(verifier.verify(token)).toOption.map { payload =>
-      val identity = for {
-        provider <- Option(payload.getClaim("provider").asString)
-        providerId <- Option(payload.getClaim("providerId").asString)
-      } yield ( OauthIdentity(provider, providerId) )
-
-      AppUser(payload.getSubject, identity, Option(payload.getClaim("name").asString))
+      AppUser(payload.getSubject, Option(payload.getClaim("name").asString))
     }
 
+}
 
+object SimpleDoorman extends Doorman[IO, AppUser] with JwtIssuer {
+
+  override def fromProvider(provider: String, data: Map[String, String]): IO[Option[AppUser]] = {
+    IO.delay(provider match {
+      case "google" => Some(AppUser(UUID.randomUUID.toString, data.get("name"), data))
+      case "github" => Some(AppUser(UUID.randomUUID.toString, data.get("name"), data))
+    })
+  }
+
+  override def create()(implicit ev: Monad[IO]): IO[AppUser] = IO.delay(AppUser(UUID.randomUUID.toString))
+
+  /**
+    * Unmarshall cookie to User
+    */
+  override def toUser(cookie: String): IO[Option[AppUser]] = IO.delay(parseCookie(cookie))
 }
 
