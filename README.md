@@ -1,10 +1,12 @@
 # Doorman
 
-Http4s middleware for Oauth2 authentication and session management.
+Oauth2 authentication and user session middleware for `http4s`.
 
-This project has not reached releasable state, do not use yet!
+The project is in early alpha, use with care!
 
 # Usage
+
+Add dependency ```  "com.akolov" %% "doorman" % "0.0.1"```.
 
 Configure a `Doorman`:
 
@@ -59,20 +61,8 @@ Configure oauth providers:
   }
 ```
    
-   
-To access user information in the service:
-```scala
-    val sessionManager = SessionManager(doormanClient)
-    val routes: HttpRoutes[F] = sessionManager.middleware(
-        AuthedService {
-          case GET -> Root / "hello"  as user =>
-            Ok(Json.obj("message" -> Json.fromString(s"Hello, ${user}")))
-        }
-      )
-```
-Note that both authenticated and not-authenticated users are tracked with a cookie.
-      
-To allow login, add routes for Oauth2 login:
+
+To allow users to login, add routes for Oauth2 login. Decide how to handle the login outcome yourself:
 
 ```scala
 val oauth = new OauthEndpoints[F, User](clientResource, doormanClient, config)
@@ -89,4 +79,18 @@ val oauth = new OauthEndpoints[F, User](clientResource, doormanClient, config)
       }
   }
 ```
-      
+
+## Session Management
+
+To access user information in the service:
+
+```scala
+    val sessionManager = SessionManager(doormanClient)
+    val routes: HttpRoutes[F] = sessionManager.middleware(
+        AuthedService {
+          case GET -> Root / "hello"  as user =>
+            Ok(Json.obj("message" -> Json.fromString(s"Hello, ${user}")))
+        }
+      )
+```
+Note that both authenticated and not-authenticated users are tracked with a cookie.

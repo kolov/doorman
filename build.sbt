@@ -8,7 +8,6 @@ val GoogleOauthClientVersion = "1.22.0"
 val CirceVersion = "0.10.1"
 
 ThisBuild / organization := "com.akolov"
-//ThisBuild / version := "0.1.0-SNAPSHOT"
 ThisBuild / name := "doorman"
 ThisBuild / scalaVersion := "2.12.8"
 
@@ -19,6 +18,7 @@ lazy val testDependencies = Seq(
 )
 
 lazy val core = (project in file("core")).settings(
+  name := "doorman-core",
   commonSettings,
   libraryDependencies ++= Seq(
     "org.http4s" %% "http4s-blaze-server" % Http4sVersion,
@@ -27,6 +27,7 @@ lazy val core = (project in file("core")).settings(
     "org.http4s" %% "http4s-dsl" % Http4sVersion,
     "io.circe" %% "circe-generic" % CirceVersion,
     "io.circe" %% "circe-parser" % CirceVersion,
+//    "com.akolov" %% "doorman" % "0.0.1"
   ) ++ testDependencies,
   publishTo := Some("releases" at "https://oss.sonatype.org/service/local/staging/deploy/maven2"),
   credentials += Credentials(Path.userHome / ".sonatype" / ".credentials")
