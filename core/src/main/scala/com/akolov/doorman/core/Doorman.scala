@@ -2,6 +2,14 @@ package com.akolov.doorman.core
 
 import cats.Monad
 
+case class OauthConfig(userAuthorizationUri: String,
+                       accessTokenUri: String,
+                       userInfoUri: String,
+                       clientId: String,
+                       clientSecret: String,
+                       scope: Iterable[String],
+                       redirectUrl: String)
+
 trait DoormanConfig {
   val cookieName: String
 

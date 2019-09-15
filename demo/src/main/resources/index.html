@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Doorman Demo App</title>
+</head>
+<body>
+<script language="JavaScript">
+const userAction = async () => {
+  const response = await fetch('/userinfo');
+  const user = await response.json();
+  document.getElementById("progress").innerHTML = ""
+  document.getElementById("useruuid").innerHTML = "Hello, user. Your uuid is " + user.uuid + ". It will not change after you log in."
+  if( user["name"])
+    document.getElementById("username").innerHTML = "Your name is " + myJson.uuid
+  else
+    document.getElementById("username").innerHTML = "We don't know your name";
+  props = "";
+  for(p in user.data) {
+    props += p + "="  (user.data)[p]
+  }
+  if(props == "")
+    document.getElementById("userdetails").innerHTML = "We have no data about you";
+  else
+    document.getElementById("userdetails").innerHTML = "All we know about you: " + props;
+
+
+}
+
+userAction();
+
+</script>
+<div id="progress">Retrieving used info</div>
+<div id="useruuid"> </div>
+<div id="username"> </div>
+<div id="userdetails"> </div>
+</body>
+</html>

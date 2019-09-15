@@ -13,14 +13,7 @@ import org.http4s.headers.{Accept, Authorization, Location, `Cache-Control`}
 import org.http4s.{AuthScheme, Credentials, EntityDecoder, Headers, MediaType, Query, Request, Response, Uri}
 
 
-case class OauthConfig(userAuthorizationUri: String,
-                       accessTokenUri: String,
-                       userInfoUri: String,
-                       clientId: String,
-                       clientSecret: String,
-                       scope: Iterable[String],
-                       redirectUrl: String
-                      )
+
 
 /**
   * This class provides the necessary endpoints to handle Oauth login. They need to be mapped to

@@ -9,7 +9,7 @@ val CirceVersion = "0.10.1"
 
 organization := "com.akolov"
 name := "doorman"
-scalaVersion := "2.12.8"
+scalaVersion := "2.12.9"
 
 description := "Oauth2 authentication and user session middleware for http4s"
 licenses := Seq("MIT License" -> url("https://github.com/kolov/doorman/blob/master/LICENSE"))

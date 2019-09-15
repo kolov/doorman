@@ -6,6 +6,7 @@ The project is in early alpha, use with care!
 
 # Usage
 
+Read how to use `doorman` or jump right to the [demo](#demo)
 Add dependency ```  "com.akolov" %% "doorman" % "0.0.1"```.
 
 Configure a `Doorman`:
@@ -94,3 +95,7 @@ To access user information in the service:
       )
 ```
 Note that both authenticated and not-authenticated users are tracked with a cookie.
+
+# Demo
+
+`sbt demo/run`

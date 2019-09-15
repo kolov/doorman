@@ -4,22 +4,26 @@ import cats._
 import cats.implicits._
 import cats.effect._
 import com.akolov.doorman.core._
-import org.http4s.HttpRoutes
+import org.http4s.{HttpRoutes, StaticFile, Uri}
 import org.http4s.client.Client
 import org.http4s.dsl.Http4sDsl
+import org.http4s.headers.Location
 
+import scala.concurrent.ExecutionContext
 
-class OauthService[F[_] : Effect : Monad, User](config: DoormanConfig,
-                                                clientResource: Resource[F, Client[F]],
-                                                val doormanClient: Doorman[F, User],
-                                                sessionManager: SessionManager[F, User]
-                                               ) extends Http4sDsl[F] {
+class OauthService[F[_]: Effect: Sync: ContextShift, User](
+  config: DoormanConfig,
+  clientResource: Resource[F, Client[F]],
+  val doormanClient: Doorman[F, User],
+  sessionManager: SessionManager[F, User])
+    extends Http4sDsl[F] {
 
   object CodeMatcher extends QueryParamDecoderMatcher[String]("code")
 
   val oauth = new OauthEndpoints[F, User](clientResource, doormanClient, config)
 
   def routes: HttpRoutes[F] = HttpRoutes.of[F] {
+
     case GET -> Root / "login" / configname =>
       oauth.login(configname)
 
@@ -31,6 +35,5 @@ class OauthService[F[_] : Effect : Monad, User](config: DoormanConfig,
       }
 
   }
-
 
 }
