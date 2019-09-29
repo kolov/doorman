@@ -8,7 +8,6 @@ import com.akolov.doorman.core.{Doorman, DoormanConfig, OauthConfig, SessionMana
 import com.typesafe.config.{Config, ConfigFactory, ConfigList, ConfigObject}
 import org.http4s._
 import org.http4s.client.blaze.BlazeClientBuilder
-import org.http4s.server.Router
 import org.http4s.server.middleware.{CORS, CORSConfig}
 
 import scala.collection.JavaConverters._

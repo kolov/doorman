@@ -1,7 +1,7 @@
 import sbt.Keys.credentials
 import sbt.{Credentials, Developer, Path, ScmInfo, url}
 
-val Http4sVersion = "0.20.0-M3"
+val Http4sVersion = "0.20.11"
 val Specs2Version = "4.1.0"
 val LogbackVersion = "1.2.3"
 val GoogleOauthClientVersion = "1.22.0"

@@ -6,11 +6,11 @@
 </head>
 <body>
 <script language="JavaScript">
-const userAction = async () => {
-  const response = await fetch('/userinfo');
+const getUserInfo = async () => {
+  const response = await fetch('/userinfo', {credentials: 'include'});
   const user = await response.json();
   document.getElementById("progress").innerHTML = ""
-  document.getElementById("useruuid").innerHTML = "Hello, user. Your uuid is " + user.uuid + ". It will not change after you log in."
+  document.getElementById("useruuid").innerHTML = "Hello, user. Your uuid is " + user.uuid + "."
   if( user["name"])
     document.getElementById("username").innerHTML = "Your name is " + myJson.uuid
   else
@@ -27,12 +27,26 @@ const userAction = async () => {
 
 }
 
-userAction();
+getUserInfo();
+
+function login(provider) {
+  window.location='/login/' + provider;
+}
+
 
 </script>
 <div id="progress">Retrieving used info</div>
-<div id="useruuid"> </div>
-<div id="username"> </div>
-<div id="userdetails"> </div>
+<div id="useruuid"></div>
+<div id="username"></div>
+<div id="userdetails"></div>
+
+<br>
+<div id="login">Login with
+    <input id="login-provider" type=text value="google">
+    <button  onclick="login(document.getElementById('login-provider').value)">Login</button>
+</div>
+<div id="refresh">Login with
+    <button   onclick="getUserInfo()">Refresh user info</button>
+</div>
 </body>
 </html>

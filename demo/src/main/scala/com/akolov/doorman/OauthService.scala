@@ -9,8 +9,6 @@ import org.http4s.client.Client
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.Location
 
-import scala.concurrent.ExecutionContext
-
 class OauthService[F[_]: Effect: Sync: ContextShift, User](
   config: DoormanConfig,
   clientResource: Resource[F, Client[F]],
@@ -29,9 +27,12 @@ class OauthService[F[_]: Effect: Sync: ContextShift, User](
 
     case GET -> Root / "oauth" / "login" / configname :? CodeMatcher(code) =>
       val user: F[Either[String, User]] = oauth.callback(configname, code)
+
       user.flatMap {
-        case Left(error) => Ok(s"Error: $error")
-        case Right(user) => Ok(s"User: $user").map(r => sessionManager.addUserCookie(user, r))
+        case Left(error) => Ok(s"Error during OAuth: $error")
+        case Right(user) =>
+          println(s"Got user: $user")
+          TemporaryRedirect(Location(Uri.uri("/index.html"))).map(r => sessionManager.addUserCookie(user, r))
       }
 
   }

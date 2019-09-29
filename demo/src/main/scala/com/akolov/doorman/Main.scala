@@ -1,9 +1,7 @@
 package com.akolov.doorman
 
-import cats.implicits._
 import cats.effect.{ExitCode, IO, IOApp}
 import org.http4s.server.blaze.BlazeServerBuilder
-
 
 object Main extends IOApp {
 
@@ -13,8 +11,10 @@ object Main extends IOApp {
       code <- BlazeServerBuilder[IO]
         .bindHttp(8080, "0.0.0.0")
         .withHttpApp(app)
-        .serve.compile.drain.as(ExitCode.Success)
+        .serve
+        .compile
+        .drain
+        .map(_ => ExitCode.Success)
     } yield code
-
 
 }
