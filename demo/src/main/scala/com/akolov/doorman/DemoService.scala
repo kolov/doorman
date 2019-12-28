@@ -21,7 +21,7 @@ class DemoService[F[_]: Effect: ContextShift](sessionManager: SessionManager[F, 
 
   implicit val fooEncoder: Encoder[AppUser] = deriveEncoder[AppUser]
 
-  val routes = sessionManager.cookieMiddleware(
+  val routes = sessionManager.userTrackingMiddleware(
     HttpRoutes.of[F] {
       case GET -> Root =>
         TemporaryRedirect(Location(Uri.uri("/index.html")))
@@ -29,7 +29,7 @@ class DemoService[F[_]: Effect: ContextShift](sessionManager: SessionManager[F, 
         StaticFile.fromResource("/web/index.html", ec, Some(request)).getOrElseF(NotFound())
     }
   ) <+>
-    sessionManager.userProviderMiddleware(
+    sessionManager.authUserMiddleware(
       AuthedRoutes.of {
         case GET -> Root / "userinfo" as user =>
           println(s"Hit /userinfo, user = $user")

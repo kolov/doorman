@@ -26,6 +26,9 @@ function login(provider) {
 }
 
 
+function logout() {
+  window.location='/logout';
+}
 
 </script>
 <div id="progress">Retrieving used info</div>
@@ -36,6 +39,11 @@ function login(provider) {
 <div id="login">Login with
     <input id="login-provider" type=text value="google">
     <button onclick="login(document.getElementById('login-provider').value)">Login</button>
+</div>
+<div id="logout">
+    <form method="post" action="logout">
+        <input type="submit" value="Logout"></input>
+    </form>
 </div>
 <div id="refresh">
     <button onclick="getUserInfo()">Refresh user info</button>

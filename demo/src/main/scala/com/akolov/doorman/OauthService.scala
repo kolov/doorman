@@ -1,12 +1,14 @@
 package com.akolov.doorman
 
+import cats.data.NonEmptyList
 import cats.effect._
 import cats.implicits._
 import com.akolov.doorman.core._
+import org.http4s.CacheDirective.`no-cache`
 import org.http4s._
 import org.http4s.client.Client
 import org.http4s.dsl.Http4sDsl
-import org.http4s.headers.Location
+import org.http4s.headers.{`Cache-Control`, Location}
 
 /**
   * Endpoints needed for OAuth2
@@ -14,7 +16,7 @@ import org.http4s.headers.Location
 class OauthService[F[_]: Effect: Sync: ContextShift, User](
   oauthProviders: ProvidersLookup,
   httpClient: Resource[F, Client[F]],
-  userManager: UsersManager[F, User],
+  userManager: OAuthUserManager[F, User],
   sessionManager: SessionManager[F, User]
 ) extends Http4sDsl[F] {
 
@@ -26,7 +28,20 @@ class OauthService[F[_]: Effect: Sync: ContextShift, User](
   def routes: HttpRoutes[F] = HttpRoutes.of[F] {
 
     case GET -> Root / "login" / providerId =>
-      oauth.login(providerId)
+      oauth
+        .login(providerId)
+        .map { uri =>
+          MovedPermanently(
+            location = Location(uri),
+            body = "",
+            headers = `Cache-Control`(NonEmptyList(`no-cache`(), Nil))
+          )
+        }
+        .getOrElse(BadRequest(s"Bad or missing configuration for $providerId"))
+
+    case POST -> Root / "logout" =>
+      MovedPermanently(Location(uri"/index.html"))
+        .map(_.removeCookie(userManager.cookieName))
 
     case GET -> Root / "oauth" / "login" / providerId :? CodeMatcher(code) =>
       val result: F[Either[String, User]] = oauth.callback(providerId, code)

@@ -3,7 +3,7 @@ package com.akolov.doorman
 import cats.data.Kleisli
 import cats.effect.{ContextShift, IO, Timer}
 import cats.implicits._
-import com.akolov.doorman.core.{ProvidersLookup, SessionManager, UsersManager}
+import com.akolov.doorman.core.{OAuthUserManager, ProvidersLookup, SessionManager, UserManager}
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.implicits._
 import org.http4s.server.middleware.{CORS, CORSConfig}
@@ -17,15 +17,16 @@ class DemoApp(doormanConfig: ProvidersLookup)(implicit timer: Timer[IO], cs: Con
   val corsConfig: CORSConfig =
     CORSConfig(
       anyOrigin = false,
-      allowedOrigins = Set("http://localhost:8000"),
+      allowedOrigins = Set("http://localhost:8080"),
       allowCredentials = true,
       maxAge = 1.day.toSeconds
     )
 
-  lazy val doormanClient: UsersManager[IO, AppUser] = SimpleUsersManager
+  lazy val usersManager: OAuthUserManager[IO, AppUser] = DemoUserManager
+  lazy val sessionManager = SessionManager(usersManager)
+
   lazy val httpClient = BlazeClientBuilder[IO](global).resource
-  lazy val sessionManager = SessionManager(doormanClient, doormanConfig)
-  lazy val oauthService = new OauthService(doormanConfig, httpClient, doormanClient, sessionManager)
+  lazy val oauthService = new OauthService(doormanConfig, httpClient, usersManager, sessionManager)
   lazy val demoService = new DemoService(sessionManager)
 
   lazy val service: Kleisli[IO, Request[IO], Response[IO]] =

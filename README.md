@@ -2,36 +2,73 @@
 
 Oauth2 authentication and user session middleware for `http4s`.
 
-The project is in early alpha, use with care!
+User authentication and user tracking are two orthogonal concerns that often appear
+close to each other and need to be hanndled together. This tiny library offers help with both.
 
 # Usage
 
 Read how to use `doorman` or jump right to the [demo](#demo)
-Add dependency ```  "com.akolov" %% "doorman" % "0.0.1"```.
 
-Configure a `Doorman`:
+Add dependency ```"com.akolov" %% "doorman" % "0.0.1"```.
+
+### User tracking
+
+Your web site may want to offer services to not authenticated users. A user may visit your site
+a few times and find the resources he left by his last visit. 
+If the user decides to authenticate at some stage, 
+keeps his identity, enriching it with some attributes like name, email etc. 
+
+`Doorman` offers two different middlewares to track users:
+  - `authUserMiddleware` provides `AuthedRequest`, giving the application access to the user identity
+  - `userTrackingMiddleware` is a weaker version - the user is tracked with a cookie,
+   but the endpoint that does not need a user information gets a `Request`, not an `AuthedRequest`.
+
+To use the any middleware, provide a `UserManager`:
 
 ```scala
-trait Doorman[F[_], User] {
+trait UserManager[F[_], User] {
 
-  /** Create User from Oauth user data */
-  def fromProvider(provider: String, data: Map[String, String]): F[Option[User]]
+  /** name of the tracking cookie */
+  def cookieName: String
 
-  /** Create a non-authenticated user */
-  def create()(implicit ev: Monad[F]): F[User]
+  /** Create a new non-authenticated user */
+  def create: F[User]
 
   /** Marshall User to a cookie */
-  def toCookie(user: User): String
+  def userToCookie(user: User): String
 
   /** Unmarshall cookie to User */
-  def toUser(cookie: String): F[Option[User]]
+  def cookieToUser(cookie: String): F[Option[User]]
 
 }
 ```
-   
-   
-Configure oauth providers:
 
+Nothing spectacular about he middleware:
+
+```
+val routes = sessionManager.userTrackingMiddleware(
+       HttpRoutes.of[F] {. . .}
+     ) <+>
+       sessionManager.authUserMiddleware(
+         AuthedRoutes.of {. . . }
+       )
+```   
+   
+### Oauth2
+   
+For every OAuth2 provider a configuration is needed:
+
+```case class OAuthProviderConfig(
+     userAuthorizationUri: String,
+     accessTokenUri: String,
+     userInfoUri: String,
+     clientId: String,
+     clientSecret: String,
+     scope: Iterable[String],
+     redirectUrl: String
+   )```
+
+`ProvidersLookup`
 ```yaml
  oauth {
   google {
@@ -47,19 +84,7 @@ Configure oauth providers:
     redirectUrl: "http://localhost:8080/api/v1/oauth/login/google"
     redirectUrl: ${?OAUTH2_GOOGLE_REDIRECT_URL}
   }
-  github {
-    clientId: "set in env var"
-    clientId: ${?OAUTH2_GITHUB_CLIENT_ID}
-    clientSecret: "set in env var"
-    clientSecret: ${?OAUTH2_GITHUB_CLIENT_SECRET}
-    userAuthorizationUri: "https://github.com/login/oauth/authorize"
-    accessTokenUri: "https://github.com/login/oauth/access_token"
-    clientAuthenticationScheme: "form"
-    scope: ["openid", "email", profile]
-    userInfoUri: "https://api.github.com/user"
-    redirectUrl: "http://localhost:8080/api/v1/oauth/login/github"
-    redirectUrl: ${?OAUTH2_GITHUB_REDIRECT_URL}
-  }
+  github {... }
 ```
    
 
@@ -81,21 +106,9 @@ val oauth = new OauthEndpoints[F, User](clientResource, doormanClient, config)
   }
 ```
 
-## Session Management
-
-To access user information in the service:
-
-```scala
-    val sessionManager = SessionManager(doormanClient)
-    val routes: HttpRoutes[F] = sessionManager.middleware(
-        AuthedService {
-          case GET -> Root / "hello"  as user =>
-            Ok(Json.obj("message" -> Json.fromString(s"Hello, ${user}")))
-        }
-      )
-```
-Note that both authenticated and not-authenticated users are tracked with a cookie.
 
 # Demo
+
+See the demo using everything mentioned above:
 
 `sbt demo/run`

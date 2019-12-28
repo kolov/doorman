@@ -10,17 +10,16 @@ import org.http4s.server.{AuthMiddleware, Middleware}
 import org.http4s.{AuthedRequest, Request, Response}
 
 trait SessionManager[F[_], U] {
-  val userProviderMiddleware: AuthMiddleware[F, U]
-  val cookieMiddleware: Middleware[OptionT[F, ?], Request[F], Response[F], Request[F], Response[F]]
+  val authUserMiddleware: AuthMiddleware[F, U]
+  val userTrackingMiddleware: Middleware[OptionT[F, ?], Request[F], Response[F], Request[F], Response[F]]
 }
 
 object SessionManager {
-  case class UserAndCookie[User](user: User, cookie: Option[String])
 
-  def apply[F[_]: Effect, User](userManager: UsersManager[F, User], providers: ProvidersLookup) =
+  def apply[F[_]: Effect, User](userManager: UserManager[F, User]) =
     new SessionManager[F, User] {
 
-      override val userProviderMiddleware: AuthMiddleware[F, User] = {
+      override val authUserMiddleware: AuthMiddleware[F, User] = {
         (service: Kleisli[OptionT[F, ?], AuthedRequest[F, User], Response[F]]) =>
           Kleisli { r: Request[F] =>
             val respf: F[Option[Response[F]]] = userFromRequest(r).flatMap {
@@ -37,10 +36,11 @@ object SessionManager {
           }
       }
 
-      override val cookieMiddleware: Middleware[OptionT[F, ?], Request[F], Response[F], Request[F], Response[F]] = {
+      override val userTrackingMiddleware
+        : Middleware[OptionT[F, ?], Request[F], Response[F], Request[F], Response[F]] = {
         (service: Kleisli[OptionT[F, ?], Request[F], Response[F]]) =>
           Kleisli { r: Request[F] =>
-            val respf: F[Option[Response[F]]] = userFromRequest(r).flatMap {
+            OptionT(userFromRequest(r).flatMap {
               case (isOld, user) =>
                 val resp: OptionT[F, Response[F]] = service.run(r)
                 if (isOld) {
@@ -48,9 +48,7 @@ object SessionManager {
                 } else {
                   resp.map(_.addCookie(userManager.cookieName, userManager.userToCookie(user))).value
                 }
-            }
-
-            OptionT(respf)
+            })
           }
       }
 

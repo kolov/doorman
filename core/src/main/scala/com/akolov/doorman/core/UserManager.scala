@@ -15,12 +15,12 @@ trait ProvidersLookup {
   def forId(provider: String): Option[OAuthProviderConfig]
 }
 
-trait UsersManager[F[_], User] {
+trait UserManager[F[_], User] {
 
-  /** Create User from Oauth user data */
-  def userFromOAuth(provider: String, data: Map[String, String]): F[Option[User]]
+  /** name of the tracking cookie */
+  def cookieName: String
 
-  /** Create a non-authenticated user */
+  /** Create a new non-authenticated user */
   def create: F[User]
 
   /** Marshall User to a cookie */
@@ -29,6 +29,11 @@ trait UsersManager[F[_], User] {
   /** Unmarshall cookie to User */
   def cookieToUser(cookie: String): F[Option[User]]
 
-  def cookieName: String
+}
+
+trait OAuthUserManager[F[_], User] extends UserManager[F, User] {
+
+  /** Create User from (Oauth) user attributes.  */
+  def userFromOAuth(provider: String, data: Map[String, String]): F[Option[User]]
 
 }
