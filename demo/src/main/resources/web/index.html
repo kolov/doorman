@@ -12,17 +12,9 @@ const getUserInfo = async () => {
   document.getElementById("progress").innerHTML = ""
   document.getElementById("useruuid").innerHTML = "Hello, user. Your uuid is " + user.uuid + "."
   if( user["name"])
-    document.getElementById("username").innerHTML = "Your name is " + myJson.uuid
+    document.getElementById("username").innerHTML = "Your name is " + user.name
   else
     document.getElementById("username").innerHTML = "We don't know your name";
-  props = "";
-  for(p in user.data) {
-    props += p + "="  (user.data)[p]
-  }
-  if(props == "")
-    document.getElementById("userdetails").innerHTML = "We have no data about you";
-  else
-    document.getElementById("userdetails").innerHTML = "All we know about you: " + props;
 
 
 }
@@ -34,19 +26,19 @@ function login(provider) {
 }
 
 
+
 </script>
 <div id="progress">Retrieving used info</div>
 <div id="useruuid"></div>
 <div id="username"></div>
-<div id="userdetails"></div>
 
 <br>
 <div id="login">Login with
     <input id="login-provider" type=text value="google">
-    <button  onclick="login(document.getElementById('login-provider').value)">Login</button>
+    <button onclick="login(document.getElementById('login-provider').value)">Login</button>
 </div>
-<div id="refresh">Login with
-    <button   onclick="getUserInfo()">Refresh user info</button>
+<div id="refresh">
+    <button onclick="getUserInfo()">Refresh user info</button>
 </div>
 </body>
 </html>

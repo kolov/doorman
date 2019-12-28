@@ -1,21 +1,18 @@
 package com.akolov.doorman
 
+import com.akolov.doorman.core.ProvidersLookup
 import org.specs2.mutable.Specification
 
 class AppConfigTest extends Specification {
 
   "Application Configuration" >> {
     "read oauth configurations" >> {
-      uriReturns200()
+      val doormanConfig: ProvidersLookup = AppConfig.demoAppConfig.right.get
+      val googleConfig = doormanConfig.forId("google").get
+
+      googleConfig.userAuthorizationUri must beEqualTo("https://accounts.google.com/o/oauth2/v2/auth")
+      googleConfig.clientId must not be empty
     }
-  }
-
-  private[this] def uriReturns200() = {
-
-    val googleConfig = AppConfig.oauthEntries(AppConfig.config).get("google")
-
-    googleConfig.get.userAuthorizationUri must beEqualTo("https://accounts.google.com/o/oauth2/v2/auth")
-    googleConfig.get.clientId must not be empty
   }
 
 }

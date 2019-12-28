@@ -4,14 +4,15 @@ import java.util.UUID
 
 import cats.Monad
 import cats.effect.IO
-import com.akolov.doorman.core.Doorman
+import com.akolov.doorman.core.UsersManager
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 
 import scala.util.Try
 
-case class AppUser(uuid: String, name: Option[String] = None, data: Map[String, String] = Map())
-
+case class AppUser(uuid: String,
+                   name: Option[String] = None,
+                   data: Map[String, String] = Map())
 
 trait JwtIssuer {
 
@@ -19,12 +20,14 @@ trait JwtIssuer {
 
   private val algorithm = Algorithm.HMAC256("somesecret")
 
-  private[this] val verifier = JWT.require(algorithm)
+  private[this] val verifier = JWT
+    .require(algorithm)
     .withIssuer(name)
     .build()
 
-  def toCookie(user: AppUser): String = {
-    val builder = JWT.create()
+  def userToCookie(user: AppUser): String = {
+    val builder = JWT
+      .create()
       .withIssuer(name)
       .withClaim("sub", user.uuid)
 
@@ -42,20 +45,25 @@ trait JwtIssuer {
 
 }
 
-object SimpleDoorman extends Doorman[IO, AppUser] with JwtIssuer {
+object SimpleUsersManager extends UsersManager[IO, AppUser] with JwtIssuer {
 
-  override def fromProvider(provider: String, data: Map[String, String]): IO[Option[AppUser]] = {
+  override def userFromOAuth(provider: String,
+                             data: Map[String, String]): IO[Option[AppUser]] =
     IO.delay(provider match {
-      case "google" => Some(AppUser(UUID.randomUUID.toString, data.get("name"), data))
-      case "github" => Some(AppUser(UUID.randomUUID.toString, data.get("name"), data))
+      case "google" =>
+        Some(AppUser(UUID.randomUUID.toString, data.get("name"), data))
+      case "github" =>
+        Some(AppUser(UUID.randomUUID.toString, data.get("name"), data))
     })
-  }
 
-  override def create()(implicit ev: Monad[IO]): IO[AppUser] = IO.delay(AppUser(UUID.randomUUID.toString))
+  override def create(): IO[AppUser] =
+    IO.delay(AppUser(UUID.randomUUID.toString))
 
   /**
     * Unmarshall cookie to User
     */
-  override def toUser(cookie: String): IO[Option[AppUser]] = IO.delay(parseCookie(cookie))
-}
+  override def cookieToUser(cookie: String): IO[Option[AppUser]] =
+    IO.delay(parseCookie(cookie))
 
+  override def cookieName: String = "demo-app-user"
+}

@@ -1,42 +1,38 @@
 package com.akolov.doorman
 
-import java.util.concurrent.Executors
-
-import cats.effect.{ContextShift, IO}
+import cats.effect.IO
+import cats.effect.specs2.CatsIO
 import org.http4s._
 import org.http4s.implicits._
 import org.http4s.server.Router
-import org.specs2.matcher.MatchResult
 import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
-
-import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
+import org.specs2.specification.Scope
 
 import scala.concurrent.ExecutionContext.Implicits.global
-class HelloWorldSpec extends Specification with Mockito with Testing {
 
-  "HelloWorld" >> {
-    "return 200" >> {
-      uriReturns200()
+class HelloWorldSpec extends Specification with CatsIO with Mockito with Testing {
+
+  "The Demo application" should {
+
+    "redirect request to /" in new TestContext {
+      serve(Request[IO](Method.GET, uri"/")).status must beEqualTo(Status.TemporaryRedirect)
+    }
+
+    "serve to request to /index.html" in new TestContext {
+      serve(Request[IO](Method.GET, uri"/index.html")).status must beEqualTo(Status.Ok)
     }
 
   }
 
-  val executionContext: ExecutionContextExecutorService =
-    ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(8))
+  class TestContext extends Scope {
+    private val demoConfig = AppConfig.demoAppConfig.right.get
+    val serverConfig = new DemoApp(demoConfig)
+    val sessionManager = serverConfig.sessionManager
+    val routes = Router("/" -> new DemoService[IO](sessionManager).routes).orNotFound
 
-  implicit lazy val contextShift: ContextShift[IO] = IO.contextShift(executionContext)
-
-  val sessionManager = ServerConfig.sessionManager.run(AppConfig.config).unsafeRunSync
-
-  private[this] val retRoot: Response[IO] = {
-    val getHW = Request[IO](Method.GET, Uri.uri("/"))
-    Router("/" -> new DemoService[IO](sessionManager).routes)
-      .orNotFound(getHW)
-      .unsafeRunSync()
+    def serve(request: Request[IO]): Response[IO] =
+      routes(request).unsafeRunSync()
   }
-
-  private[this] def uriReturns200(): MatchResult[Status] =
-    retRoot.status must beEqualTo(Status.TemporaryRedirect)
 
 }
