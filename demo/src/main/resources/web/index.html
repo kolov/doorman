@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Doorman Demo App</title>
+</head>
+<body>
+<script language="JavaScript">
+const getUserInfo = async () => {
+  const response = await fetch('/userinfo', {credentials: 'include'});
+  const user = await response.json();
+  document.getElementById("progress").innerHTML = ""
+  document.getElementById("useruuid").innerHTML = "Hello, user. Your uuid is " + user.uuid + "."
+  if( user["name"])
+    document.getElementById("username").innerHTML = "Your name is " + user.name
+  else
+    document.getElementById("username").innerHTML = "We don't know your name";
+
+
+}
+
+getUserInfo();
+
+function login(provider) {
+  window.location='/login/' + provider;
+}
+
+
+function logout() {
+  window.location='/logout';
+}
+
+</script>
+<div id="progress">Retrieving used info</div>
+<div id="useruuid"></div>
+<div id="username"></div>
+
+<br>
+<div id="login">Login with
+    <input id="login-provider" type=text value="google">
+    <button onclick="login(document.getElementById('login-provider').value)">Login</button>
+</div>
+<div id="logout">
+    <form method="post" action="logout">
+        <input type="submit" value="Logout"></input>
+    </form>
+</div>
+<div id="refresh">
+    <button onclick="getUserInfo()">Refresh user info</button>
+</div>
+</body>
+</html>

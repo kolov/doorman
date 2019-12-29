@@ -30,7 +30,7 @@ Forget about if yo don't need that.
 
 To use the any middleware, provide a `UserManager`:
 
-```scala
+```scala mdoc
 trait UserManager[F[_], User] {
 
   /** name of the tracking cookie */
@@ -50,8 +50,20 @@ trait UserManager[F[_], User] {
 
 Nothing spectacular about its usage:
 
+```scala mdoc:invisible
+import cats.effect._
+import cats.implicits._
+import org.http4s._, org.http4s.dsl.io._, org.http4s.implicits._
+import org.http4s.dsl.Http4sDsl
 
-```scala
+type F[A] = cats.effect.IO[A]
+type AppUser = String
+
+import com.akolov.doorman.core._
+```
+
+```scala mdoc
+
 class DemoService[F[_]: Effect: ContextShift](sessionManager: SessionManager[F, AppUser])
   extends Http4sDsl[F] {
 val routes =  
@@ -89,7 +101,7 @@ case class OAuthProviderConfig(
 
 Given a configuration, `OauthEndpoints` helps handle user login and callback:
 
-```scala
+```scala mdoc
 trait OauthEndpoints[F[_], User] {
   // Builds a url to redirect the user to for authentication
   def login(config: OAuthProviderConfig): Option[Uri]
