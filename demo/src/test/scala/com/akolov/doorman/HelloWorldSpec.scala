@@ -1,7 +1,10 @@
 package com.akolov.doorman
 
-import cats.effect.IO
+import java.util.concurrent.Executors
+
+import cats.effect.{Blocker, IO}
 import cats.effect.specs2.CatsIO
+import com.akolov.doorman.demo.{AppConfig, DemoApp, DemoService}
 import org.http4s._
 import org.http4s.implicits._
 import org.http4s.server.Router
@@ -9,7 +12,7 @@ import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
 import org.specs2.specification.Scope
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.ExecutionContext
 
 class HelloWorldSpec extends Specification with CatsIO with Mockito with Testing {
 
@@ -26,6 +29,9 @@ class HelloWorldSpec extends Specification with CatsIO with Mockito with Testing
   }
 
   class TestContext extends Scope {
+    val blockingEC = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
+    implicit val blocker = Blocker.liftExecutionContext(blockingEC)
+
     private val demoConfig = AppConfig.demoAppConfig.right.get
     val serverConfig = new DemoApp(demoConfig)
     val sessionManager = serverConfig.sessionManager

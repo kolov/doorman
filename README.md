@@ -2,8 +2,8 @@
 
 Oauth2 authentication and user session middleware for `http4s`.
 
-User authentication and user tracking are two orthogonal concerns that often appear
-close to each other and need to be hanndled together. This tiny library offers help with both.
+User authentication and user tracking are two orthogonal concerns that often
+need to be handled together. This tiny library offers help with both concerns.
 
 # Usage
 
@@ -13,15 +13,20 @@ Add dependency ```"com.akolov" %% "doorman" % "0.0.1"```.
 
 ### User tracking
 
-Your web site may want to offer services to not authenticated users. A user may visit your site
+Your web site may want to offer services to not authenticated users. A user may visit the site
 a few times and find the resources he left by his last visit. 
-If the user decides to authenticate at some stage, 
+If the user decides to authenticate at some stage, he
 keeps his identity, enriching it with some attributes like name, email etc. 
 
-`Doorman` offers two different middlewares to track users:
-  - `authUserMiddleware` provides `AuthedRequest`, giving the application access to the user identity
-  - `userTrackingMiddleware` is a weaker version - the user is tracked with a cookie,
-   but the endpoint that does not need a user information gets a `Request`, not an `AuthedRequest`.
+`Doorman` offers `authUserMiddleware` to track users. It builds
+`AuthedRequest`, giving the application access to the user identity.
+
+
+Note: There is also a weaker version of the middleware: `userTrackingMiddleware`. 
+The user is tracked with a cookie,
+but the endpoint that does not need a user information gets a `Request`, 
+not an `AuthedRequest`. It is useful when tools outside of the application need user tracking cookie.
+Forget about if yo don't need that.
 
 To use the any middleware, provide a `UserManager`:
 
@@ -43,22 +48,35 @@ trait UserManager[F[_], User] {
 }
 ```
 
-Nothing spectacular about he middleware:
+Nothing spectacular about its usage:
 
-```
-val routes = sessionManager.userTrackingMiddleware(
-       HttpRoutes.of[F] {. . .}
-     ) <+>
-       sessionManager.authUserMiddleware(
-         AuthedRoutes.of {. . . }
-       )
+
+```scala
+class DemoService[F[_]: Effect: ContextShift](sessionManager: SessionManager[F, AppUser])
+  extends Http4sDsl[F] {
+val routes =  
+    sessionManager.authUserMiddleware(
+      AuthedRoutes.of[AppUser, F] {
+        case GET -> Root / "userinfo"  as user =>
+          Ok(s"Hello, $user")
+        }
+   )
+}
 ```   
+
+When the endpoint is hit, the request will be analyzed by the `UserManager` 
+and the endpoint function will get either the user from the cookie, 
+if one exists,
+or a newly created user. 
+In the case of a new user, a cookie will be set in the response. 
+
    
 ### Oauth2
    
-For every OAuth2 provider a configuration is needed:
+`Doorman` needs a configuration for every OAuth2 provider:
 
-```case class OAuthProviderConfig(
+```scala  mdoc
+case class OAuthProviderConfig(
      userAuthorizationUri: String,
      accessTokenUri: String,
      userInfoUri: String,
@@ -66,49 +84,33 @@ For every OAuth2 provider a configuration is needed:
      clientSecret: String,
      scope: Iterable[String],
      redirectUrl: String
-   )```
-
-`ProvidersLookup`
-```yaml
- oauth {
-  google {
-    clientId: "set in env var"
-    clientId: ${?OAUTH2_GOOGLE_CLIENT_ID}
-    clientSecret: "set in env var"
-    clientSecret: ${?OAUTH2_GOOGLE_CLIENT_SECRET}
-    userAuthorizationUri: "https://accounts.google.com/o/oauth2/v2/auth"
-    accessTokenUri: "https://www.googleapis.com/oauth2/v4/token"
-    clientAuthenticationScheme: "form"
-    scope: ["openid", "email", "profile"]
-    userInfoUri: "https://www.googleapis.com/oauth2/v3/userinfo"
-    redirectUrl: "http://localhost:8080/api/v1/oauth/login/google"
-    redirectUrl: ${?OAUTH2_GOOGLE_REDIRECT_URL}
-  }
-  github {... }
+   )
 ```
-   
 
-To allow users to login, add routes for Oauth2 login. Decide how to handle the login outcome yourself:
+Given a configuration, `OauthEndpoints` helps handle user login and callback:
 
 ```scala
-val oauth = new OauthEndpoints[F, User](clientResource, doormanClient, config)
-
-  def routes: HttpRoutes[F] = HttpRoutes.of[F] {
-    case GET -> Root / "login" / configname =>
-      oauth.login(configname)
-
-    case GET -> Root / "oauth" / "login" / configname :? CodeMatcher(code) =>
-      val user: F[Either[String, User]] = oauth.callback(configname, code)
-      user.flatMap {
-        case Left(error) => Ok(s"Error: $error")
-        case Right(user) => Ok(s"User: $user").map(r => sessionManager.addUserCookie(user, r))
-      }
-  }
+trait OauthEndpoints[F[_], User] {
+  // Builds a url to redirect the user to for authentication
+  def login(config: OAuthProviderConfig): Option[Uri]
+  // handles the OAuth2 callback
+  def callback(providerId: String, config: OAuthProviderConfig, code: String): F[Either[String, User]]
+}
 ```
+The application needs to expose endpoints providing redirect to the login UR 
+and provessing of the callback.
+See the demo application for an example how to tie all together.
 
 
 # Demo
 
-See the demo using everything mentioned above:
+A very simple application with user tracking and OAuth2. 
 
-`sbt demo/run`
+To run the demo: `sbt demo/run`.For the OAuth to work, you need to provide 
+correct OAuth2 configuration in `application.conf`
+ 
+
+
+ 
+
+

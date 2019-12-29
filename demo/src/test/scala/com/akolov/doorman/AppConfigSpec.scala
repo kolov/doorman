@@ -1,6 +1,6 @@
 package com.akolov.doorman
 
-import com.akolov.doorman.core.ProvidersLookup
+import com.akolov.doorman.demo.{AppConfig, ProvidersLookup}
 import org.specs2.mutable.Specification
 
 class AppConfigTest extends Specification {

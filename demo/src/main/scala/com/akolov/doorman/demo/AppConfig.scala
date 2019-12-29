@@ -1,6 +1,6 @@
-package com.akolov.doorman
+package com.akolov.doorman.demo
 
-import com.akolov.doorman.core.{OAuthProviderConfig, ProvidersLookup}
+import com.akolov.doorman.core.OAuthProviderConfig
 import com.typesafe.config.{Config, ConfigFactory}
 import pureconfig.ConfigReader.Result
 import pureconfig._

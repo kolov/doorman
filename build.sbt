@@ -1,11 +1,11 @@
 import sbt.Keys.credentials
 import sbt.{url, Credentials, Developer, Path, ScmInfo}
 
-val Http4sVersion = "0.20.11"
+val Http4sVersion = "0.21.0-M6"
 val Specs2Version = "4.7.1"
 val LogbackVersion = "1.2.3"
 val GoogleOauthClientVersion = "1.22.0"
-val CirceVersion = "0.10.1"
+val CirceVersion = "0.12.3"
 val scalaLoggingVersion = "3.9.2"
 
 lazy val scala212 = "2.12.10"
@@ -49,7 +49,7 @@ lazy val testDependencies = Seq(
 )
 
 lazy val core = (project in file("core")).settings(
-  name := "doorman-core",
+  name := "doorman",
   commonSettings,
   libraryDependencies ++= Seq(
     "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingVersion,
@@ -61,7 +61,7 @@ lazy val core = (project in file("core")).settings(
     "io.circe" %% "circe-parser" % CirceVersion
   ) ++ testDependencies,
   crossScalaVersions := supportedScalaVersions,
-  publishTo := Some("releases" at "https://oss.sonatype.org/service/local/staging/deploy/maven2"),
+  publishTo := Some("Sonatype Snapshots Nexus" at "https://oss.sonatype.org/content/repositories/snapshots"),
   credentials += Credentials(Path.userHome / ".sonatype" / ".credentials")
 )
 
@@ -69,21 +69,25 @@ lazy val demo = (project in file("demo"))
   .dependsOn(core)
   .settings(
     commonSettings,
-    publish := {},
+    publish / skip := true,
     libraryDependencies ++= Seq(
       "com.auth0" % "java-jwt" % "3.2.0",
       "com.github.pureconfig" %% "pureconfig" % "0.12.2",
       "ch.qos.logback" % "logback-classic" % LogbackVersion
     ) ++ testDependencies
   )
+   .enablePlugins(JavaAppPackaging)
 
 lazy val root = (project in file("."))
   .aggregate(demo, core)
+  .settings {
+    publish / skip := true
+  }
 
-lazy val docs = project // new documentation project
+lazy val docs = project
   .in(file("project-docs")) // important: it must not be docs/
-  .dependsOn(core)
+  .dependsOn(demo)
   .enablePlugins(MdocPlugin)
   .settings(
-    mdocOut := new java.io.File("README.md")
+//    mdocOut := new java.io.File("README.md")
   )

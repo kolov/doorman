@@ -1,5 +1,7 @@
 package com.akolov.doorman.core
 
+import io.circe.JsonObject
+
 case class OAuthProviderConfig(
   userAuthorizationUri: String,
   accessTokenUri: String,
@@ -9,11 +11,6 @@ case class OAuthProviderConfig(
   scope: Iterable[String],
   redirectUrl: String
 )
-
-trait ProvidersLookup {
-
-  def forId(provider: String): Option[OAuthProviderConfig]
-}
 
 trait UserManager[F[_], User] {
 
@@ -31,9 +28,9 @@ trait UserManager[F[_], User] {
 
 }
 
-trait OAuthUserManager[F[_], User] extends UserManager[F, User] {
+trait OAuthUserManager[F[_], User] {
 
   /** Create User from (Oauth) user attributes.  */
-  def userFromOAuth(provider: String, data: Map[String, String]): F[Option[User]]
+  def userFromOAuth(providerId: String, json: JsonObject): F[Option[User]]
 
 }

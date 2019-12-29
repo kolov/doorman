@@ -1,6 +1,6 @@
-package com.akolov.doorman
+package com.akolov.doorman.demo
 
-import cats.data.NonEmptyList
+import cats.data._
 import cats.effect._
 import cats.implicits._
 import com.akolov.doorman.core._
@@ -16,37 +16,42 @@ import org.http4s.headers.{`Cache-Control`, Location}
 class OauthService[F[_]: Effect: Sync: ContextShift, User](
   oauthProviders: ProvidersLookup,
   httpClient: Resource[F, Client[F]],
-  userManager: OAuthUserManager[F, User],
-  sessionManager: SessionManager[F, User]
+  userManager: UserManager[F, User] with OAuthUserManager[F, User]
 ) extends Http4sDsl[F] {
 
   object CodeMatcher extends QueryParamDecoderMatcher[String]("code")
 
-  val oauth =
-    new OauthEndpoints[F, User](httpClient, userManager, oauthProviders)
+  val oauth = OauthEndpoints[F, User](httpClient, userManager)
 
   def routes: HttpRoutes[F] = HttpRoutes.of[F] {
 
     case GET -> Root / "login" / providerId =>
-      oauth
-        .login(providerId)
-        .map { uri =>
-          MovedPermanently(
-            location = Location(uri),
-            body = "",
-            headers = `Cache-Control`(NonEmptyList(`no-cache`(), Nil))
-          )
+      oauthProviders
+        .forId(providerId)
+        .flatMap { config =>
+          oauth
+            .login(config)
+            .map { uri =>
+              MovedPermanently(
+                location = Location(uri),
+                body = "",
+                headers = `Cache-Control`(NonEmptyList(`no-cache`(), Nil))
+              )
+            }
         }
         .getOrElse(BadRequest(s"Bad or missing configuration for $providerId"))
 
     case POST -> Root / "logout" =>
-      MovedPermanently(Location(uri"/index.html"))
+      MovedPermanently(Location(Uri.unsafeFromString("/index.html")))
         .map(_.removeCookie(userManager.cookieName))
 
     case GET -> Root / "oauth" / "login" / providerId :? CodeMatcher(code) =>
-      val result: F[Either[String, User]] = oauth.callback(providerId, code)
+      val result = for {
+        config <- EitherT.fromOption[F](oauthProviders.forId(providerId), "Unknown provider")
+        result <- EitherT(oauth.callback(providerId, config, code))
+      } yield result
 
-      result.flatMap {
+      result.value.flatMap {
         case Left(error) => Ok(s"Error during OAuth: $error")
         case Right(user) =>
           val cookieContent = userManager.userToCookie(user)
@@ -56,7 +61,7 @@ class OauthService[F[_]: Effect: Sync: ContextShift, User](
             content = cookieContent,
             path = Some("/")
           )
-          MovedPermanently(Location(uri"/index.html"))
+          MovedPermanently(Location(Uri.unsafeFromString("/index.html")))
             .map(_.addCookie(respCookie))
       }
 

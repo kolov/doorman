@@ -1,11 +1,12 @@
-package com.akolov.doorman
+package com.akolov.doorman.demo
 
 import java.util.UUID
 
 import cats.effect.IO
-import com.akolov.doorman.core.OAuthUserManager
+import com.akolov.doorman.core.{OAuthUserManager, UserManager}
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
+import io.circe.JsonObject
 
 import scala.util.Try
 
@@ -42,7 +43,7 @@ trait JwtIssuer[F[_]] {
 
 }
 
-object DemoUserManager extends OAuthUserManager[IO, AppUser] with JwtIssuer[IO] {
+object DemoUserManager extends UserManager[IO, AppUser] with OAuthUserManager[IO, AppUser] with JwtIssuer[IO] {
 
   override def cookieName: String = "demo-app-user"
 
@@ -52,14 +53,6 @@ object DemoUserManager extends OAuthUserManager[IO, AppUser] with JwtIssuer[IO] 
   override def cookieToUser(cookie: String): IO[Option[AppUser]] =
     IO.delay(parseCookie(cookie))
 
-  override def userFromOAuth(provider: String, data: Map[String, String]): IO[Option[AppUser]] =
-    for {
-      id <- IO.delay(UUID.randomUUID.toString)
-      user = provider match {
-        case "google" =>
-          Some(AppUser(id, data.get("name"), data))
-        case "github" =>
-          Some(AppUser(id, data.get("name"), data))
-      }
-    } yield user
+  override def userFromOAuth(provider: String, json: JsonObject): IO[Option[AppUser]] =
+    IO.delay(UUID.randomUUID.toString).map(id => Some(AppUser(id, json("name").flatMap(_.asString))))
 }

@@ -2,7 +2,6 @@ package com.akolov.doorman.core
 
 import cats._
 import cats.data._
-import cats.implicits._
 import cats.effect.Effect
 import cats.implicits._
 import org.http4s.headers.Cookie
