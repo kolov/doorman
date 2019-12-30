@@ -5,7 +5,7 @@ import java.util.concurrent.Executors
 import cats.data.Kleisli
 import cats.effect.{Blocker, ContextShift, IO, Timer}
 import cats.implicits._
-import com.akolov.doorman.core.{OAuthProviderConfig, SessionManager}
+import com.akolov.doorman.core.OAuthProviderConfig
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.implicits._
 import org.http4s.server.middleware.{CORS, CORSConfig}
@@ -33,11 +33,11 @@ class DemoApp(doormanConfig: ProvidersLookup)(implicit timer: Timer[IO], cs: Con
   implicit val blocker = Blocker.liftExecutionContext(blockingEC)
 
   lazy val usersManager = DemoUserManager
-  lazy val sessionManager = SessionManager(usersManager)
 
   lazy val httpClient = BlazeClientBuilder[IO](global).resource
   lazy val oauthService = new OauthService(doormanConfig, httpClient, usersManager)
-  lazy val demoService = new DemoService(sessionManager)
+
+  lazy val demoService = new DemoService(usersManager)
 
   lazy val service: Kleisli[IO, Request[IO], Response[IO]] =
     CORS(demoService.routes <+> oauthService.routes, corsConfig).orNotFound

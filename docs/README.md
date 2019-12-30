@@ -1,15 +1,15 @@
 # Doorman
 
-Oauth2 authentication and user session middleware for `http4s`.
+Oauth2 authentication and user tracking middleware for `http4s`.
 
 User authentication and user tracking are two orthogonal concerns that often
-need to be handled together. This tiny library offers help with both concerns.
+need to be handled together. This tiny library offers help with both.
 
 # Usage
 
 Read how to use `doorman` or jump right to the [demo](#demo)
 
-Add dependency ```"com.akolov" %% "doorman" % "0.2.0"```.
+Add dependency ```"com.akolov" %% "doorman" % "0.3.0"```.
 
 ### User tracking
 
@@ -18,8 +18,9 @@ a few times and find the resources he left by his last visit.
 If the user decides to authenticate at some stage, he
 keeps his identity, enriching it with some attributes like name, email etc. 
 
-`Doorman` offers `authUserMiddleware` to track users. It builds
-`AuthedRequest`, giving the application access to the user identity.
+`Doorman` offers `AuthMiddleware` to track users. It builds
+`AuthedRequest`, giving the application access to the user identity. Non-logged users 
+have identities too.
 
 
 Note: There is also a weaker version of the middleware: `userTrackingMiddleware`. 
@@ -30,7 +31,7 @@ Forget about if yo don't need that.
 
 To use the any middleware, provide a `UserManager`:
 
-```scala mdoc
+```scala
 trait UserManager[F[_], User] {
 
   /** name of the tracking cookie */
@@ -55,6 +56,7 @@ import cats.effect._
 import cats.implicits._
 import org.http4s._, org.http4s.dsl.io._, org.http4s.implicits._
 import org.http4s.dsl.Http4sDsl
+import com.akolov.doorman.core
 
 type F[A] = cats.effect.IO[A]
 type AppUser = String
@@ -64,15 +66,16 @@ import com.akolov.doorman.core._
 
 ```scala mdoc
 
-class DemoService[F[_]: Effect: ContextShift](sessionManager: SessionManager[F, AppUser])
+class DemoService[F[_]: Effect: ContextShift](userManager: UserManager[F, AppUser])
   extends Http4sDsl[F] {
-val routes =  
-    sessionManager.authUserMiddleware(
+
+    val auth = DoormanAuthMiddleware(userManager)
+    val routes = auth(
       AuthedRoutes.of[AppUser, F] {
         case GET -> Root / "userinfo"  as user =>
-          Ok(s"Hello, $user")
-        }
-   )
+         Ok(s"Hello, $user")
+      }
+    )
 }
 ```   
 
