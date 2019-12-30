@@ -13,23 +13,31 @@ lazy val scala213 = "2.13.0"
 
 lazy val supportedScalaVersions = List(scala212, scala213)
 
-organization := "com.akolov"
-name := "doorman"
-scalaVersion := scala213
+ThisBuild / organization := "com.akolov"
+ThisBuild / name := "doorman"
+ThisBuild / scalaVersion := scala213
+ThisBuild / publishMavenStyle := true
+ThisBuild / credentials += Credentials(Path.userHome / ".sonatype" / ".credentials")
+ThisBuild / description := "Oauth2 authentication and user session middleware for http4s"
+ThisBuild / licenses := Seq("MIT License" -> url("https://github.com/kolov/doorman/blob/master/LICENSE"))
+ThisBuild / useGpg := true
+ThisBuild / homepage := Some(url("https://github.com/kolov/doorman"))
 
-description := "Oauth2 authentication and user session middleware for http4s"
-licenses := Seq("MIT License" -> url("https://github.com/kolov/doorman/blob/master/LICENSE"))
+ThisBuild / pomIncludeRepository := { _ => false }
+ThisBuild / publishTo := {
+  val nexus = "https://oss.sonatype.org/"
+  if (isSnapshot.value) Some("snapshots" at nexus + "content/repositories/snapshots")
+  else Some("releases" at nexus + "service/local/staging/deploy/maven2")
+}
 
-homepage := Some(url("https://github.com/kolov/doorman"))
-
-scmInfo := Some(
+ThisBuild / scmInfo := Some(
   ScmInfo(
     url("https://github.com/kolov/doorman"),
     "scm:git@github.com:kolov/doorman.git"
   )
 )
 
-developers := List(
+ThisBuild / developers := List(
   Developer(
     id = "kolov",
     name = "Assen Kolov",
@@ -61,8 +69,7 @@ lazy val core = (project in file("core")).settings(
     "io.circe" %% "circe-parser" % CirceVersion
   ) ++ testDependencies,
   crossScalaVersions := supportedScalaVersions,
-  publishTo := Some("releases" at "https://oss.sonatype.org/service/local/staging/deploy/maven2"),
-  credentials += Credentials(Path.userHome / ".sonatype" / ".credentials")
+
 )
 
 lazy val demo = (project in file("demo"))

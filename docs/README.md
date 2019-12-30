@@ -120,6 +120,10 @@ A very simple application with user tracking and OAuth2.
 
 To run the demo: `sbt demo/run`.For the OAuth to work, you need to provide 
 correct OAuth2 configuration in `application.conf`
+
+## Developmnet
+
+`sbt publishSigned`
  
 
 
