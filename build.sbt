@@ -61,7 +61,7 @@ lazy val core = (project in file("core")).settings(
     "io.circe" %% "circe-parser" % CirceVersion
   ) ++ testDependencies,
   crossScalaVersions := supportedScalaVersions,
-  publishTo := Some("Sonatype Snapshots Nexus" at "https://oss.sonatype.org/content/repositories/snapshots"),
+  publishTo := Some("releases" at "https://oss.sonatype.org/service/local/staging/deploy/maven2"),
   credentials += Credentials(Path.userHome / ".sonatype" / ".credentials")
 )
 
