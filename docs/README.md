@@ -9,7 +9,7 @@ need to be handled together. This tiny library offers help with both concerns.
 
 Read how to use `doorman` or jump right to the [demo](#demo)
 
-Add dependency ```"com.akolov" %% "doorman" % "0.0.1"```.
+Add dependency ```"com.akolov" %% "doorman" % "0.2.0"```.
 
 ### User tracking
 
@@ -110,7 +110,7 @@ trait OauthEndpoints[F[_], User] {
 }
 ```
 The application needs to expose endpoints providing redirect to the login UR 
-and provessing of the callback.
+and processing of the callback.
 See the demo application for an example how to tie all together.
 
 
