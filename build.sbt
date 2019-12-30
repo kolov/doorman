@@ -22,7 +22,7 @@ ThisBuild / description := "Oauth2 authentication and user session middleware fo
 ThisBuild / licenses := Seq("MIT License" -> url("https://github.com/kolov/doorman/blob/master/LICENSE"))
 ThisBuild / useGpg := true
 ThisBuild / homepage := Some(url("https://github.com/kolov/doorman"))
-
+releaseCrossBuild := true
 ThisBuild / pomIncludeRepository := { _ => false }
 ThisBuild / publishTo := {
   val nexus = "https://oss.sonatype.org/"
