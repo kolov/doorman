@@ -15,7 +15,7 @@ lazy val supportedScalaVersions = List(scala212, scala213)
 
 ThisBuild / organization := "com.akolov"
 ThisBuild / name := "doorman"
-ThisBuild / scalaVersion := scala213
+ThisBuild / scalaVersion := scala212
 ThisBuild / publishMavenStyle := true
 ThisBuild / credentials += Credentials(Path.userHome / ".sonatype" / ".credentials")
 ThisBuild / description := "Oauth2 authentication and user session middleware for http4s"

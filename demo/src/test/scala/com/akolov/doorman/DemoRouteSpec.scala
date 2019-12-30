@@ -14,7 +14,7 @@ import org.specs2.specification.Scope
 
 import scala.concurrent.ExecutionContext
 
-class HelloWorldSpec extends Specification with CatsIO with Mockito with Testing {
+class DemoRouteSpec extends Specification with CatsIO with Mockito with Testing {
 
   "The Demo application" should {
 
@@ -34,8 +34,7 @@ class HelloWorldSpec extends Specification with CatsIO with Mockito with Testing
 
     private val demoConfig = AppConfig.demoAppConfig.right.get
     val serverConfig = new DemoApp(demoConfig)
-    val sessionManager = serverConfig.sessionManager
-    val routes = Router("/" -> new DemoService[IO](sessionManager).routes).orNotFound
+    val routes = Router("/" -> new DemoService[IO](serverConfig.usersManager).routes).orNotFound
 
     def serve(request: Request[IO]): Response[IO] =
       routes(request).unsafeRunSync()

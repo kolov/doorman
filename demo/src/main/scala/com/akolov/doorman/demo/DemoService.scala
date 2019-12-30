@@ -3,7 +3,7 @@ package com.akolov.doorman.demo
 import cats.data.NonEmptyList
 import cats.effect.{Blocker, ContextShift, Effect}
 import cats.implicits._
-import com.akolov.doorman.core.SessionManager
+import com.akolov.doorman.core.{DoormanAuthMiddleware, UserManager, UserTrackingMiddleware}
 import io.circe._
 import io.circe.generic.semiauto._
 import io.circe.syntax._
@@ -13,13 +13,16 @@ import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.{`Cache-Control`, Location}
 import org.http4s.{AuthedRoutes, HttpRoutes, StaticFile, Uri}
 
-class DemoService[F[_]: Effect: ContextShift](sessionManager: SessionManager[F, AppUser])(
+class DemoService[F[_]: Effect: ContextShift](userManager: UserManager[F, AppUser])(
   implicit blocker: Blocker
 ) extends Http4sDsl[F] {
 
-  implicit val fooEncoder: Encoder[AppUser] = deriveEncoder[AppUser]
+  val track = UserTrackingMiddleware(userManager)
+  val auth = DoormanAuthMiddleware(userManager)
 
-  val routes = sessionManager.userTrackingMiddleware(
+  implicit val appUserEncoder: Encoder[AppUser] = deriveEncoder[AppUser]
+
+  val routes = track(
     HttpRoutes.of[F] {
       case GET -> Root =>
         TemporaryRedirect(Location(Uri.unsafeFromString("/index.html")))
@@ -27,7 +30,7 @@ class DemoService[F[_]: Effect: ContextShift](sessionManager: SessionManager[F, 
         StaticFile.fromResource("/web/index.html", blocker).getOrElseF(NotFound())
     }
   ) <+>
-    sessionManager.authUserMiddleware(
+    auth(
       AuthedRoutes.of[AppUser, F] {
         case GET -> Root / "userinfo" as user =>
           println(s"Hit /userinfo, user = $user")
