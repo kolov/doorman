@@ -10,7 +10,7 @@ const getUserInfo = async () => {
   const response = await fetch('/userinfo', {credentials: 'include'});
   const user = await response.json();
   document.getElementById("progress").innerHTML = ""
-  document.getElementById("useruuid").innerHTML = "Hello, user. Your uuid is " + user.uuid + "."
+  document.getElementById("useruuid").innerHTML = "Hello, user. Your uuid is " + user.uuid + ". Authenticated: " + user.authenticated + "."
   if( user["name"])
     document.getElementById("username").innerHTML = "Your name is " + user.name
   else
@@ -36,8 +36,8 @@ function logout() {
 <div id="username"></div>
 
 <br>
-<div id="login">Login with
-    <input id="login-provider" type=text value="google">
+<div id="login">Login with provider:
+    <input id="login-provider" type=text value="fake">
     <button onclick="login(document.getElementById('login-provider').value)">Login</button>
 </div>
 <div id="logout">

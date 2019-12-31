@@ -46,25 +46,28 @@ class OauthService[F[_]: Effect: Sync: ContextShift, User](
         .map(_.removeCookie(userManager.cookieName))
 
     case GET -> Root / "oauth" / "login" / providerId :? CodeMatcher(code) =>
-      val result = for {
-        config <- EitherT.fromOption[F](oauthProviders.forId(providerId), "Unknown provider")
-        result <- EitherT(oauth.callback(providerId, config, code))
-      } yield result
+      handleCallback(providerId, code)
+  }
 
-      result.value.flatMap {
-        case Left(error) => Ok(s"Error during OAuth: $error")
-        case Right(user) =>
-          val cookieContent = userManager.userToCookie(user)
+  def handleCallback(providerId: String, code: String) = {
+    val result = for {
+      config <- EitherT.fromOption[F](oauthProviders.forId(providerId), "Unknown provider")
+      result <- EitherT(oauth.callback(providerId, config, code))
+    } yield result
 
-          val respCookie = ResponseCookie(
-            name = userManager.cookieName,
-            content = cookieContent,
-            path = Some("/")
-          )
-          MovedPermanently(Location(Uri.unsafeFromString("/index.html")))
-            .map(_.addCookie(respCookie))
-      }
+    result.value.flatMap {
+      case Left(error) => Ok(s"Error during OAuth: $error")
+      case Right(user) =>
+        val cookieContent = userManager.userToCookie(user)
 
+        val respCookie = ResponseCookie(
+          name = userManager.cookieName,
+          content = cookieContent,
+          path = Some("/")
+        )
+        MovedPermanently(Location(Uri.unsafeFromString("/index.html")))
+          .map(_.addCookie(respCookie))
+    }
   }
 
 }

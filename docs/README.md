@@ -119,10 +119,20 @@ See the demo application for an example how to tie all together.
 
 # Demo
 
-A very simple application with user tracking and OAuth2. 
+A simple application with user tracking and OAuth2. 
 
-To run the demo: `sbt demo/run`.For the OAuth to work, you need to provide 
-correct OAuth2 configuration in `application.conf`
+Start a fake OAuth server with:
+
+`docker run -p 8282:8282 --name fakeoauth -e PERMITTED_REDIRECT_URLS=http://localhost:8080/oauth/login/fake  pkbdev/fake-oauth2-server`
+
+To run the demo: `sbt demo/run` and point your browser to `http://localhost:8080`.
+
+The demo works with the fake provider running at `localhost:8282`. 
+
+It has been tested with Google too, provided 
+ the environment variables `OAUTH2_GOOGLE_CLIENT_ID`, `OAUTH2_GOOGLE_CLIENT_SECRET` and
+  `OAUTH2_GOOGLE_REDIRECT_URL` has to be set to valid values (see `application.conf`)
+
 
 ## Developmnet
 

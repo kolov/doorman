@@ -7,16 +7,18 @@ import cats.implicits._
 import io.circe._
 import org.http4s.circe.jsonOf
 import org.http4s.client.Client
+import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.{Accept, Authorization}
-import org.http4s.{AuthScheme, Credentials, EntityDecoder, Headers, MediaType, Query, Request, Uri}
+import org.http4s.{AuthScheme, Credentials, EntityDecoder, Headers, MediaType, Query, Request, Uri, UrlForm}
 
 /**
-  * This trait provides the necessary endpoints to handle Oauth login. They need to be mapped to
+  * This provides the necessary endpoints to handle OAuth login and callback.
+  * They need to be mapped to
   * routes. See the demo application for an example
   */
 
-trait OauthEndpoints[F[_], User] {
+trait OauthEndpoints[F[_], User] extends Http4sClientDsl[F] {
   // Builds a url to redirect the user to for authentication
   def login(config: OAuthProviderConfig): Option[Uri]
   // handles teh OAuth2 callback
@@ -57,18 +59,21 @@ object OauthEndpoints {
           uri = Uri(
             base.scheme,
             base.authority,
-            base.path,
-            Query(
-              ("redirect_uri", Some(config.redirectUrl)),
-              ("client_id", Some(config.clientId)),
-              ("client_secret", Some(config.clientSecret)),
-              ("code", Some(code)),
-              ("grant_type", Some("authorization_code"))
+            base.path
+          )
+          _ = println(uri)
+
+          request = POST(
+            UrlForm(
+              "redirect_uri" -> config.redirectUrl,
+              "client_id" -> config.clientId,
+              "client_secret" -> config.clientSecret,
+              "code" -> code,
+              "grant_type" -> "authorization_code"
             ),
-            base.fragment
+            uri
           )
 
-          request = Request[F](method = POST, uri = uri, headers = Headers(Accept(MediaType.application.json)))
           resp <- EitherT.liftF[F, String, JsonObject](clientResource.use { client =>
                    client.expect[JsonObject](request)
                  })
@@ -93,7 +98,7 @@ object OauthEndpoints {
                      })
           optUser = oauthUserManager
             .userFromOAuth(providerId, respUser)
-            .map(v => Either.cond(v.isDefined, v.get, "err"))
+            .map(v => Either.cond(v.isDefined, v.get, "error"))
 
           user <- EitherT(optUser)
 
