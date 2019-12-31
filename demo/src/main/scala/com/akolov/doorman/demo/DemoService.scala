@@ -33,7 +33,6 @@ class DemoService[F[_]: Effect: ContextShift](userManager: UserManager[F, AppUse
     auth(
       AuthedRoutes.of[AppUser, F] {
         case GET -> Root / "userinfo" as user =>
-          println(s"Hit /userinfo, user = $user")
           Ok(user.asJson, `Cache-Control`(NonEmptyList(`no-cache`(), List(`no-store`, `must-revalidate`))))
       }
     )

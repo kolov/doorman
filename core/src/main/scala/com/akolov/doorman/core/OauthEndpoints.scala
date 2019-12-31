@@ -61,7 +61,6 @@ object OauthEndpoints {
             base.authority,
             base.path
           )
-          _ = println(uri)
 
           request = POST(
             UrlForm(
