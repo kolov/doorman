@@ -111,9 +111,10 @@ case class OAuthProviderConfig(
 Given a configuration, `OauthEndpoints` provides handlers for the OAuth 
  endpoints: login and callback.
 `login` constructs a login URL based on the configuration. It is up to
-the application to redirect to this URL.
-`callback` handles th OAuth callback after successful authentication. It first retrieves a 
-token, than user details using this token.
+the application set up a login endpoint that redirects the user  to this URL.
+`callback` handles th OAuth callback after successful authentication. It first retrieves an
+access token, than user details. It needs an `OAuthUserManager` to create a user from
+the OAuth user attributes.
 
 ```scala mdoc
 trait OauthEndpoints[F[_], User] {
@@ -123,16 +124,17 @@ trait OauthEndpoints[F[_], User] {
   def callback(providerId: String, config: OAuthProviderConfig, code: String): F[Either[String, User]]
 }
 ```
-The application needs to expose endpoints providing redirect to the login UR 
-and processing of the callback.
-See the demo application for an example how to tie all together.
 
+See the demo application for an example how to tie all together.
 
 # Demo
 
-A simple application with user tracking and OAuth2. 
+A simple application with user tracking and OAuth2. User is tracked with a JWT cookie. It has been tested with
+[fake-oauth2-server](https://github.com/patientsknowbest/fake-oauth2-server) and [Google OAuth2](https://developers.google.com/identity/protocols/OAuth2)
 
-Start a fake OAuth server with:
+## fake-oauth2-server
+
+Start a server with:
 
 `docker run -p 8282:8282 --name fakeoauth -e PERMITTED_REDIRECT_URLS=http://localhost:8080/oauth/login/fake  pkbdev/fake-oauth2-server`
 
@@ -140,12 +142,14 @@ To run the demo: `sbt demo/run` and point your browser to `http://localhost:8080
 
 The demo works with the fake provider running at `localhost:8282`. 
 
-It has been tested with Google too, provided 
+## Google OAuth2
+
+To run the demo, you need to setup your OAuth2 with Google, then privide configuration viq
  the environment variables `OAUTH2_GOOGLE_CLIENT_ID`, `OAUTH2_GOOGLE_CLIENT_SECRET` and
-  `OAUTH2_GOOGLE_REDIRECT_URL` has to be set to valid values (see `application.conf`)
+  `OAUTH2_GOOGLE_REDIRECT_URL` (see `application.conf`)
 
 
-## Developmnet
+## Developent notes
 
 `sbt '+ publishSigned'`
 `sbt sonatypeReleaseAll`
