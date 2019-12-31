@@ -10,24 +10,30 @@ import io.circe.JsonObject
 
 import scala.util.Try
 
-case class AppUser(uuid: String, name: Option[String] = None, data: Map[String, String] = Map())
+case class AppUser(
+  uuid: String,
+  authenticated: Boolean = false,
+  name: Option[String] = None,
+  data: Map[String, String] = Map.empty
+)
 
 trait JwtIssuer[F[_]] {
 
-  private val name = "MyApp"
+  private val appName = "DemoApp"
 
   private val algorithm = Algorithm.HMAC256("somesecret")
 
   private[this] val verifier = JWT
     .require(algorithm)
-    .withIssuer(name)
+    .withIssuer(appName)
     .build()
 
   def userToCookie(user: AppUser): String = {
     val builder = JWT
       .create()
-      .withIssuer(name)
+      .withIssuer(appName)
       .withClaim("sub", user.uuid)
+      .withClaim("authenticated", user.authenticated)
 
     val builder1 = user.name
       .map(name => builder.withClaim("name", name))
@@ -38,7 +44,11 @@ trait JwtIssuer[F[_]] {
 
   def parseCookie(token: String): Option[AppUser] =
     Try(verifier.verify(token)).toOption.map { payload =>
-      AppUser(payload.getSubject, Option(payload.getClaim("name").asString))
+      AppUser(
+        payload.getSubject,
+        payload.getClaim("authenticated").asBoolean,
+        Option(payload.getClaim("name").asString)
+      )
     }
 
 }
@@ -54,5 +64,5 @@ object DemoUserManager extends UserManager[IO, AppUser] with OAuthUserManager[IO
     IO.delay(parseCookie(cookie))
 
   override def userFromOAuth(provider: String, json: JsonObject): IO[Option[AppUser]] =
-    IO.delay(UUID.randomUUID.toString).map(id => Some(AppUser(id, json("name").flatMap(_.asString))))
+    IO.delay(UUID.randomUUID.toString).map(id => Some(AppUser(id, true, json("name").flatMap(_.asString))))
 }
