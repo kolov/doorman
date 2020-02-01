@@ -1,5 +1,5 @@
 import sbt.Keys.credentials
-import sbt.{url, Credentials, Developer, Path, ScmInfo}
+import sbt.{Credentials, Developer, Path, ScmInfo, url}
 
 val Http4sVersion = "0.21.0-M6"
 val Specs2Version = "4.7.1"
@@ -53,7 +53,6 @@ lazy val commonSettings = Seq(
 lazy val testDependencies = Seq(
   "org.specs2" %% "specs2-core" % Specs2Version % "test",
   "org.specs2" %% "specs2-mock" % Specs2Version % "test",
-  "com.codecommit" %% "cats-effect-testing-specs2" % "0.3.0" % "test"
 )
 
 lazy val core = (project in file("core")).settings(
@@ -68,6 +67,8 @@ lazy val core = (project in file("core")).settings(
     "io.circe" %% "circe-generic" % CirceVersion,
     "io.circe" %% "circe-parser" % CirceVersion
   ) ++ testDependencies,
+  publishTo := Some("releases" at "https://oss.sonatype.org/service/local/staging/deploy/maven2"),
+  credentials += Credentials(Path.userHome / ".sonatype" / ".credentials"),
   crossScalaVersions := supportedScalaVersions,
 
 )
@@ -96,5 +97,11 @@ lazy val docs = project
   .dependsOn(demo)
   .enablePlugins(MdocPlugin)
   .settings(
-//    mdocOut := new java.io.File("README.md")
+    tutSourceDirectory := (baseDirectory in Compile).value / "tut",
+    tutTargetDirectory := (baseDirectory in Compile).value,
+    crossScalaVersions := Nil,
+    publish / skip := true
+
+    //    mdocOut := new java.io.File("README.md")
   )
+
