@@ -1,5 +1,5 @@
 import sbt.Keys.credentials
-import sbt.{Credentials, Developer, Path, ScmInfo, url}
+import sbt.{url, Credentials, Developer, Path, ScmInfo}
 
 val Http4sVersion = "0.21.0-M6"
 val Specs2Version = "4.7.1"
@@ -23,7 +23,9 @@ ThisBuild / licenses := Seq("MIT License" -> url("https://github.com/kolov/doorm
 ThisBuild / useGpg := true
 ThisBuild / homepage := Some(url("https://github.com/kolov/doorman"))
 releaseCrossBuild := true
-ThisBuild / pomIncludeRepository := { _ => false }
+ThisBuild / pomIncludeRepository := { _ =>
+  false
+}
 ThisBuild / publishTo := {
   val nexus = "https://oss.sonatype.org/"
   if (isSnapshot.value) Some("snapshots" at nexus + "content/repositories/snapshots")
@@ -53,6 +55,7 @@ lazy val commonSettings = Seq(
 lazy val testDependencies = Seq(
   "org.specs2" %% "specs2-core" % Specs2Version % "test",
   "org.specs2" %% "specs2-mock" % Specs2Version % "test",
+  "com.codecommit" %% "cats-effect-testing-specs2" % "0.3.0" % "test"
 )
 
 lazy val core = (project in file("core")).settings(
@@ -69,8 +72,7 @@ lazy val core = (project in file("core")).settings(
   ) ++ testDependencies,
   publishTo := Some("releases" at "https://oss.sonatype.org/service/local/staging/deploy/maven2"),
   credentials += Credentials(Path.userHome / ".sonatype" / ".credentials"),
-  crossScalaVersions := supportedScalaVersions,
-
+  crossScalaVersions := supportedScalaVersions
 )
 
 lazy val demo = (project in file("demo"))
@@ -84,7 +86,7 @@ lazy val demo = (project in file("demo"))
       "ch.qos.logback" % "logback-classic" % LogbackVersion
     ) ++ testDependencies
   )
-   .enablePlugins(JavaAppPackaging)
+  .enablePlugins(JavaAppPackaging)
 
 lazy val root = (project in file("."))
   .aggregate(demo, core)
@@ -97,11 +99,8 @@ lazy val docs = project
   .dependsOn(demo)
   .enablePlugins(MdocPlugin)
   .settings(
-    tutSourceDirectory := (baseDirectory in Compile).value / "tut",
-    tutTargetDirectory := (baseDirectory in Compile).value,
     crossScalaVersions := Nil,
     publish / skip := true
 
     //    mdocOut := new java.io.File("README.md")
   )
-

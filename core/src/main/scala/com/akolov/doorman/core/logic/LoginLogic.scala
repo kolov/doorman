@@ -6,7 +6,7 @@ import org.http4s.{Query, Uri}
 
 object LoginLogic {
 
-  def login(config: OauthConfig): Either[DoormanError, Uri] =
+  def login(config: OAuthProviderConfig): Either[DoormanError, Uri] =
     for {
       base <- Uri.fromString(config.userAuthorizationUri).leftMap(e => ConfigurationError(e.message))
       uri = Uri(

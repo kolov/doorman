@@ -121,7 +121,7 @@ A simple application with user tracking and OAuth2. User is tracked with a JWT c
 
 Start a server with:
 
-`docker run -p 8282:8282 --name fakeoauth -e PERMITTED_REDIRECT_URLS=http://localhost:8080/oauth/login/fake  pkbdev/fake-oauth2-server`
+    docker run -p 8282:8282 --name fakeoauth -e PERMITTED_REDIRECT_URLS=http://localhost:8080/oauth/login/fake  pkbdev/fake-oauth2-server
 
 To run the demo: `sbt demo/run` and point your browser to `http://localhost:8080`.
 
