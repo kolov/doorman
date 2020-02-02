@@ -35,7 +35,7 @@ trait OauthEndpoints[F[_], User] extends Http4sClientDsl[F] {
   // Builds a url to redirect the user to for authentication
   def login(config: OAuthProviderConfig): Either[DoormanError, Uri]
   // handles teh OAuth2 callback
-  def callback(config: OAuthProviderConfig, code: String): F[Either[DoormanError, UserData]]
+  def callback(config: OAuthProviderConfig, code: String, client: Client[F]): F[Either[DoormanError, UserData]]
 }
 
 object OauthEndpoints {
@@ -43,13 +43,14 @@ object OauthEndpoints {
   def apply[F[_]: Effect: Monad, User]() =
     new OauthEndpoints[F, User] with Http4sDsl[F] {
 
-      implicit val jsonObjectDecoder: EntityDecoder[F, JsonObject] =
-        jsonOf[F, JsonObject]
-
       def login(config: OAuthProviderConfig): Either[DoormanError, Uri] =
         LoginLogic.login(config)
 
       def callback(config: OAuthProviderConfig, code: String, client: Client[F]): F[Either[DoormanError, UserData]] = {
+
+        implicit val jsonObjectDecoder: EntityDecoder[F, JsonObject] =
+          jsonOf[F, JsonObject]
+
         val e: EitherT[F, DoormanError, UserData] = for {
           uri <- EitherT.fromEither[F](
                   Uri.fromString(config.accessTokenUri).leftMap(e => ConfigurationError(e.message))
@@ -92,7 +93,7 @@ object OauthEndpoints {
                        )
 
                      }
-          userMap <- EitherT.pure[F, DoormanError](respUser.toMap.mapValues(_.toString))
+          userMap <- EitherT.pure[F, DoormanError](respUser.toMap.map { case (k, v) => (k, v.toString) })
 
         } yield UserData(userMap)
 
