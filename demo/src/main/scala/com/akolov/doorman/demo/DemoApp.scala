@@ -15,11 +15,7 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.global
 import scala.concurrent.duration._
 
-trait ProvidersLookup {
-  def forId(provider: String): Option[OAuthProviderConfig]
-}
-
-class DemoApp(doormanConfig: ProvidersLookup)(implicit timer: Timer[IO], cs: ContextShift[IO]) {
+class DemoApp(providerLookup: String => Option[OAuthProviderConfig])(implicit timer: Timer[IO], cs: ContextShift[IO]) {
 
   val corsConfig: CORSConfig =
     CORSConfig(
@@ -35,11 +31,10 @@ class DemoApp(doormanConfig: ProvidersLookup)(implicit timer: Timer[IO], cs: Con
   lazy val usersManager = DemoUserManager
 
   lazy val httpClient = BlazeClientBuilder[IO](global).resource
-  lazy val oauthService = new OauthService(doormanConfig, httpClient, usersManager)
 
-  lazy val demoService = new DemoService(usersManager)
+  lazy val demoService = new DemoService(usersManager, providerLookup, httpClient)
 
   lazy val service: Kleisli[IO, Request[IO], Response[IO]] =
-    CORS(demoService.routes <+> oauthService.routes, corsConfig).orNotFound
+    CORS(demoService.routes, corsConfig).orNotFound
 
 }

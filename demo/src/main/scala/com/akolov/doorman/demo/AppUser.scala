@@ -3,18 +3,20 @@ package com.akolov.doorman.demo
 import java.util.UUID
 
 import cats.effect.IO
-import com.akolov.doorman.core.UserManager
+import com.akolov.doorman.core.{UserData, UserManager}
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 
 import scala.util.Try
 
 case class AppUser(
-  uuid: String,
+  uuid: UUID,
   authenticated: Boolean = false,
   name: Option[String] = None,
   data: Map[String, String] = Map.empty
-)
+) {
+  def identified( data: UserData) = AppUser(uuid, true, data.attrs.get("name"), data.attrs)
+}
 
 trait JwtIssuer[F[_]] {
 
@@ -31,7 +33,7 @@ trait JwtIssuer[F[_]] {
     val builder = JWT
       .create()
       .withIssuer(appName)
-      .withClaim("sub", user.uuid)
+      .withClaim("sub", user.uuid.toString)
       .withClaim("authenticated", user.authenticated)
 
     val builder1 = user
@@ -43,12 +45,14 @@ trait JwtIssuer[F[_]] {
   }
 
   def parseCookie(token: String): Option[AppUser] =
-    Try(verifier.verify(token)).toOption.map { payload =>
-      AppUser(
-        payload.getSubject,
-        payload.getClaim("authenticated").asBoolean,
-        Option(payload.getClaim("name").asString)
-      )
+    Try(verifier.verify(token)).toOption.flatMap { payload =>
+      Try(UUID.fromString(payload.getSubject)).toOption.map { uuid =>
+        AppUser(
+          uuid,
+          payload.getClaim("authenticated").asBoolean,
+          Option(payload.getClaim("name").asString)
+        )
+      }
     }
 
 }
@@ -58,7 +62,7 @@ object DemoUserManager extends UserManager[IO, AppUser] with JwtIssuer[IO] {
   override def cookieName: String = "demo-app-user"
 
   override def create(): IO[AppUser] =
-    IO.delay(AppUser(UUID.randomUUID.toString))
+    IO.delay(AppUser(UUID.randomUUID))
 
   override def cookieToUser(cookie: String): IO[Option[AppUser]] =
     IO.delay(parseCookie(cookie))

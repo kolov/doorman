@@ -2,19 +2,19 @@
 
 Oauth2 authentication and user tracking middleware for `http4s`.
 
-User authentication and user tracking are two orthogonal concerns that often
+User authentication and user tracking are two orthogonal concerns that yet often
 need to be handled together. This tiny library offers help with both.
 
 # Usage
 
 Read how to use `doorman` or jump right to the [demo](#demo)
 
-Add dependency ```"com.akolov" %% "doorman" % "0.3.2"```.
+Add dependency `"com.akolov" %% "doorman" % "0.3.2"`.
 
 ### User tracking
 
 Your web site may want to offer services to not authenticated users. As a user
-returns to the site, he will find the resources he left by his previous visit. 
+returns to the site, he will find the resources as he left them at his previous visit. 
 If the user decides to authenticate at some stage, he
 keeps his identity, enriching it with some attributes like name, email etc. 
 
@@ -66,7 +66,7 @@ val myUserManager = new UserManager[F, AppUser] {
 }
 ```
 
-Given a `UserManager`, Doorman provides `DoormanAuthMiddleware` and
+Given a `UserManager`, Doorman provides `AuthMiddleware` and
 `UserTrackingMiddleware`: 
 
 ```scala mdoc
@@ -88,7 +88,7 @@ val service = new DemoService(myUserManager)
 ```   
 
 When the endpoint is hit, the request will be analyzed by the `UserManager` 
-and the endpoint function will get either the user from the cookie, 
+and the endpoint function will receive either the user from the cookie, 
 if one exists, or a newly created user. 
 In the case of a new user, a cookie will be set in the response. 
 
@@ -113,8 +113,7 @@ Given a configuration, `OauthEndpoints` provides handlers for the OAuth
 `login` constructs a login URL based on the configuration. It is up to
 the application set up a login endpoint that redirects the user  to this URL.
 `callback` handles th OAuth callback after successful authentication. It first retrieves an
-access token, than user details. It needs an `OAuthUserManager` to create a user from
-the OAuth user attributes.
+access token, than user details. It is up to the application to handle the OAuth2 user data.
 
 ```scala mdoc
 trait OauthEndpoints[F[_], User] {

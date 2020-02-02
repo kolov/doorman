@@ -13,12 +13,7 @@ object AppConfig {
 
   case class OAuthConfig(oauthProviders: Map[String, OAuthProviderConfig])
 
-  def demoAppConfig: Result[ProvidersLookup] =
-    configSource.load[OAuthConfig].map { oAuthConfig =>
-      new ProvidersLookup {
-        override def forId(provider: String): Option[OAuthProviderConfig] =
-          oAuthConfig.oauthProviders.get(provider)
-      }
-    }
+  def demoAppConfig: Result[OAuthConfig] =
+    configSource.load[OAuthConfig]
 
 }

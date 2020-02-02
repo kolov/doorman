@@ -2,7 +2,7 @@
 
 Oauth2 authentication and user tracking middleware for `http4s`.
 
-User authentication and user tracking are two orthogonal concerns that often
+User authentication and user tracking are two orthogonal concerns that yet often
 need to be handled together. This tiny library offers help with both.
 
 # Usage
@@ -14,7 +14,7 @@ Add dependency `"com.akolov" %% "doorman" % "0.3.2"`.
 ### User tracking
 
 Your web site may want to offer services to not authenticated users. As a user
-returns to the site, he will find the resources he left by his previous visit. 
+returns to the site, he will find the resources as he left them at his previous visit. 
 If the user decides to authenticate at some stage, he
 keeps his identity, enriching it with some attributes like name, email etc. 
 
@@ -30,7 +30,6 @@ not an `AuthedRequest`. It is useful when tools outside of the application need 
 Forget about if yo don't need that.
 
 To use the any middleware, provide a `UserManager`:
-
 
 ```scala
 val myUserManager = new UserManager[F, AppUser] {
