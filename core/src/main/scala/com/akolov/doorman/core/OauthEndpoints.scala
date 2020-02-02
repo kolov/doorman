@@ -4,13 +4,26 @@ import cats._
 import cats.data._
 import cats.effect._
 import cats.implicits._
-import io.circe._
+import com.akolov.doorman.core.logic.LoginLogic
+import io.circe.JsonObject
 import org.http4s.circe.jsonOf
 import org.http4s.client.Client
 import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.{Accept, Authorization}
-import org.http4s.{AuthScheme, Credentials, EntityDecoder, Headers, MediaType, Query, Request, Uri, UrlForm}
+import org.http4s._
+
+case class OAuthProviderConfig(
+  userAuthorizationUri: String,
+  accessTokenUri: String,
+  userInfoUri: String,
+  clientId: String,
+  clientSecret: String,
+  scope: Iterable[String],
+  redirectUrl: String
+)
+
+case class UserData(attrs: Map[String, String])
 
 /**
   * This provides the necessary endpoints to handle OAuth login and callback.
@@ -20,89 +33,73 @@ import org.http4s.{AuthScheme, Credentials, EntityDecoder, Headers, MediaType, Q
 
 trait OauthEndpoints[F[_], User] extends Http4sClientDsl[F] {
   // Builds a url to redirect the user to for authentication
-  def login(config: OAuthProviderConfig): Option[Uri]
+  def login(config: OAuthProviderConfig): Either[DoormanError, Uri]
   // handles teh OAuth2 callback
-  def callback(providerId: String, config: OAuthProviderConfig, code: String): F[Either[String, User]]
+  def callback(config: OAuthProviderConfig, code: String): F[Either[DoormanError, UserData]]
 }
 
 object OauthEndpoints {
 
-  def apply[F[_]: Effect: Monad, User](
-    clientResource: Resource[F, Client[F]],
-    oauthUserManager: OAuthUserManager[F, User]
-  ) =
+  def apply[F[_]: Effect: Monad, User](clientResource: Resource[F, Client[F]]) =
     new OauthEndpoints[F, User] with Http4sDsl[F] {
 
       implicit val jsonObjectDecoder: EntityDecoder[F, JsonObject] =
         jsonOf[F, JsonObject]
 
-      def login(config: OAuthProviderConfig): Option[Uri] =
-        for {
-          base <- Uri.fromString(config.userAuthorizationUri).toOption
-          uri = Uri(
-            base.scheme,
-            base.authority,
-            base.path,
-            Query(
-              ("redirect_uri", Some(config.redirectUrl)),
-              ("client_id", Some(config.clientId)),
-              ("response_type", Some("code")),
-              ("scope", Some(config.scope.mkString(" ")))
-            ),
-            base.fragment
-          )
-        } yield uri
+      def login(config: OAuthProviderConfig): Either[DoormanError, Uri] =
+        LoginLogic.login(config)
 
-      def callback(providerId: String, config: OAuthProviderConfig, code: String): F[Either[String, User]] = {
-        val user = for {
-          base <- EitherT.fromEither[F](Uri.fromString(config.accessTokenUri).leftMap(_.toString))
-          uri = Uri(
-            base.scheme,
-            base.authority,
-            base.path
-          )
-
+      def callback(config: OAuthProviderConfig, code: String): F[Either[DoormanError, UserData]] = {
+        val e: EitherT[F, DoormanError, UserData] = for {
+          uri <- EitherT.fromEither[F](
+                  Uri.fromString(config.accessTokenUri).leftMap(e => ConfigurationError(e.message))
+                )
           request = POST(
             UrlForm(
-              "redirect_uri" -> config.redirectUrl,
-              "client_id" -> config.clientId,
-              "client_secret" -> config.clientSecret,
-              "code" -> code,
-              "grant_type" -> "authorization_code"
+              ("redirect_uri", config.redirectUrl),
+              ("client_id", config.clientId),
+              ("client_secret", config.clientSecret),
+              ("code", code),
+              ("grant_type", "authorization_code")
             ),
-            uri
+            uri,
+            Accept(MediaType.application.json)
           )
 
-          resp <- EitherT.liftF[F, String, JsonObject](clientResource.use { client =>
+          resp <- EitherT.liftF[F, DoormanError, JsonObject](clientResource.use { client =>
                    client.expect[JsonObject](request)
                  })
-          access_token <- EitherT.fromOption[F](
-                           resp.toMap
+          access_token <- EitherT.fromOption[F]({
+                           resp
+                             .toMap
                              .get("access_token")
-                             .flatMap(_.asString),
-                           "no access_token"
-                         )
-          uriUser <- EitherT.fromEither[F](Uri.fromString(config.userInfoUri).leftMap(_.toString))
-          respUser <- EitherT.liftF[F, String, JsonObject](clientResource.use { client =>
-                       client.expect[JsonObject](
-                         Request[F](
-                           method = GET,
-                           uri = uriUser,
-                           headers = Headers(
-                             Accept(MediaType.application.json),
-                             Authorization(Credentials.Token(AuthScheme.Bearer, access_token))
+                             .flatMap(_.asString)
+
+                         }, NoAccessTokenInResponse())
+          uriUser <- EitherT.fromEither[F](
+                      Uri.fromString(config.userInfoUri).leftMap(e => ConfigurationError(e.message))
+                    )
+          respUser <- EitherT.liftF[F, DoormanError, JsonObject] {
+                       clientResource.use { client =>
+                         client.expect[JsonObject](
+                           Request[F](
+                             method = GET,
+                             uri = uriUser,
+                             headers = Headers.of(
+                               Accept(MediaType.application.json),
+                               Authorization(
+                                 Credentials.Token(AuthScheme.Bearer, access_token)
+                               )
+                             )
                            )
                          )
-                       )
-                     })
-          optUser = oauthUserManager
-            .userFromOAuth(providerId, respUser)
-            .map(v => Either.cond(v.isDefined, v.get, "error"))
+                       }
+                     }
+          userMap <- EitherT.pure[F, DoormanError](respUser.toMap.mapValues(_.toString))
 
-          user <- EitherT(optUser)
+        } yield UserData(userMap)
 
-        } yield user
-        user.value
+        e.value
       }
 
     }

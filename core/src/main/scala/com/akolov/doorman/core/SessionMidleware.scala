@@ -8,7 +8,7 @@ import org.http4s.headers.Cookie
 import org.http4s.server.{AuthMiddleware, Middleware}
 import org.http4s.{AuthedRequest, Request, Response}
 
-object UserTrackingMiddleware extends MiddlewareHelper {
+object DoormanTrackingMiddleware extends DoormanMiddleware {
   type UserTrackingMiddleware[F[_], _] = Middleware[OptionT[F, ?], Request[F], Response[F], Request[F], Response[F]]
 
   def apply[F[_]: Effect, User](userManager: UserManager[F, User]): UserTrackingMiddleware[F, User] = {
@@ -27,7 +27,7 @@ object UserTrackingMiddleware extends MiddlewareHelper {
   }
 }
 
-object DoormanAuthMiddleware extends MiddlewareHelper {
+object DoormanAuthMiddleware extends DoormanMiddleware {
 
   def apply[F[_]: Effect, User](userManager: UserManager[F, User]): AuthMiddleware[F, User] = {
     (service: Kleisli[OptionT[F, ?], AuthedRequest[F, User], Response[F]]) =>
@@ -47,7 +47,7 @@ object DoormanAuthMiddleware extends MiddlewareHelper {
   }
 }
 
-trait MiddlewareHelper {
+trait DoormanMiddleware {
 
   def userFromRequest[F[_]: Effect, User](r: Request[F], userManager: UserManager[F, User]): F[(Boolean, User)] =
     userFromCookie(r, userManager).flatMap {

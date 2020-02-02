@@ -23,7 +23,9 @@ ThisBuild / licenses := Seq("MIT License" -> url("https://github.com/kolov/doorm
 ThisBuild / useGpg := true
 ThisBuild / homepage := Some(url("https://github.com/kolov/doorman"))
 releaseCrossBuild := true
-ThisBuild / pomIncludeRepository := { _ => false }
+ThisBuild / pomIncludeRepository := { _ =>
+  false
+}
 ThisBuild / publishTo := {
   val nexus = "https://oss.sonatype.org/"
   if (isSnapshot.value) Some("snapshots" at nexus + "content/repositories/snapshots")
@@ -68,8 +70,9 @@ lazy val core = (project in file("core")).settings(
     "io.circe" %% "circe-generic" % CirceVersion,
     "io.circe" %% "circe-parser" % CirceVersion
   ) ++ testDependencies,
-  crossScalaVersions := supportedScalaVersions,
-
+  publishTo := Some("releases" at "https://oss.sonatype.org/service/local/staging/deploy/maven2"),
+  credentials += Credentials(Path.userHome / ".sonatype" / ".credentials"),
+  crossScalaVersions := supportedScalaVersions
 )
 
 lazy val demo = (project in file("demo"))
@@ -83,7 +86,7 @@ lazy val demo = (project in file("demo"))
       "ch.qos.logback" % "logback-classic" % LogbackVersion
     ) ++ testDependencies
   )
-   .enablePlugins(JavaAppPackaging)
+  .enablePlugins(JavaAppPackaging)
 
 lazy val root = (project in file("."))
   .aggregate(demo, core)
@@ -96,5 +99,8 @@ lazy val docs = project
   .dependsOn(demo)
   .enablePlugins(MdocPlugin)
   .settings(
-//    mdocOut := new java.io.File("README.md")
+    crossScalaVersions := Nil,
+    publish / skip := true
+
+    //    mdocOut := new java.io.File("README.md")
   )
