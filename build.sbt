@@ -15,7 +15,7 @@ lazy val supportedScalaVersions = List(scala212, scala213)
 
 ThisBuild / organization := "com.akolov"
 ThisBuild / name := "doorman"
-ThisBuild / scalaVersion := scala212
+ThisBuild / scalaVersion := scala213
 ThisBuild / publishMavenStyle := true
 ThisBuild / credentials += Credentials(Path.userHome / ".sonatype" / ".credentials")
 ThisBuild / description := "Oauth2 authentication and user session middleware for http4s"
@@ -23,9 +23,7 @@ ThisBuild / licenses := Seq("MIT License" -> url("https://github.com/kolov/doorm
 ThisBuild / useGpg := true
 ThisBuild / homepage := Some(url("https://github.com/kolov/doorman"))
 releaseCrossBuild := true
-ThisBuild / pomIncludeRepository := { _ =>
-  false
-}
+ThisBuild / pomIncludeRepository := { _ => false }
 ThisBuild / publishTo := {
   val nexus = "https://oss.sonatype.org/"
   if (isSnapshot.value) Some("snapshots" at nexus + "content/repositories/snapshots")
@@ -90,9 +88,10 @@ lazy val demo = (project in file("demo"))
 
 lazy val root = (project in file("."))
   .aggregate(demo, core)
-  .settings {
-    publish / skip := true
-  }
+  .settings(
+    publish / skip := true,
+    crossScalaVersions := Nil
+  )
 
 lazy val docs = project
   .in(file("project-docs")) // important: it must not be docs/

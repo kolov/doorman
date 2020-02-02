@@ -3,7 +3,7 @@ package com.akolov.doorman.demo
 import cats.data.{EitherT, NonEmptyList}
 import cats.effect.{Blocker, ContextShift, Effect, Resource}
 import cats.implicits._
-import com.akolov.doorman.core.{DoormanAuthMiddleware, OAuthProviderConfig, OauthEndpoints, UserData, UserManager, DoormanTrackingMiddleware}
+import com.akolov.doorman.core.{DoormanAuthMiddleware, DoormanTrackingMiddleware, OAuthProviderConfig, OauthEndpoints, UserData, UserManager}
 import io.circe._
 import io.circe.generic.semiauto._
 import io.circe.syntax._
@@ -26,7 +26,7 @@ class DemoService[F[_]: Effect: ContextShift](
 
   object CodeMatcher extends QueryParamDecoderMatcher[String]("code")
 
-  val oauth = OauthEndpoints[F, AppUser](httpClient)
+  val oauth = OauthEndpoints[F, AppUser]()
 
   implicit val appUserEncoder: Encoder[AppUser] = deriveEncoder[AppUser]
 
@@ -70,10 +70,14 @@ class DemoService[F[_]: Effect: ContextShift](
       )
 
   def handleCallback(providerId: String, code: String, user: AppUser) = {
-    val result = for {
-      config <- EitherT.fromOption[F](providerLookup(providerId), "Unknown provider")
-      result <- EitherT(oauth.callback(config, code).map(_.leftMap(_.toString)))
-    } yield result
+
+    val result =
+      for {
+        config <- EitherT.fromOption[F](providerLookup(providerId), "Unknown provider")
+        result <- EitherT(httpClient.use { client =>
+                   oauth.callback(config, code, client).map(_.leftMap(_.toString))
+                 })
+      } yield result
 
     result.value.handleError(e => Left(e.toString)).flatMap {
       case Left(error) => Ok(s"Error during OAuth: $error")
@@ -89,6 +93,7 @@ class DemoService[F[_]: Effect: ContextShift](
         MovedPermanently(Location(Uri.unsafeFromString("/index.html")))
           .map(_.addCookie(respCookie))
     }
+
   }
 
 }
