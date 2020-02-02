@@ -9,7 +9,7 @@ need to be handled together. This tiny library offers help with both.
 
 Read how to use `doorman` or jump right to the [demo](#demo)
 
-Add dependency `"com.akolov" %% "doorman" % "0.3.2"`.
+Add dependency `"com.akolov" %% "doorman" % "0.3.3"`.
 
 ### User tracking
 
