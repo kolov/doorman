@@ -154,10 +154,10 @@ To run the demo, you need to setup your OAuth2 with Google, then privide configu
   `OAUTH2_GOOGLE_REDIRECT_URL` (see `application.conf`)
 
 
-## Developent notes
+## Developer's notes
 
-`sbt '+ publishSigned'`
-`sbt sonatypeReleaseAll`
+    sbt '+ publishSigned'
+    sbt sonatypeReleaseAll
 
     sbt
     ++ 2.12.10!
