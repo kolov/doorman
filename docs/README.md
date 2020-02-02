@@ -36,7 +36,8 @@ import cats.effect._
 import cats.implicits._
 import org.http4s._, org.http4s.dsl.io._, org.http4s.implicits._
 import org.http4s.dsl.Http4sDsl
-import com.akolov.doorman.core
+import com.akolov.doorman.core._
+import org.http4s.client.Client
 
 type F[A] = cats.effect.IO[A]
 type AppUser = String
@@ -44,8 +45,7 @@ type AppUser = String
 import scala.concurrent.ExecutionContext.global
 implicit val ec = scala.concurrent.ExecutionContext.global
 implicit val contextShiftIO: ContextShift[IO] = IO.contextShift(ec)
-
-import com.akolov.doorman.core._
+ 
 ```
 
 ```scala mdoc
@@ -117,11 +117,17 @@ access token, than user details. It is up to the application to handle the OAuth
 
 ```scala mdoc
 trait OauthEndpoints[F[_], User] {
+
   // Builds a url to redirect the user to for authentication
   def login(config: OAuthProviderConfig): Option[Uri]
+
   // handles the OAuth2 callback
-  def callback(providerId: String, config: OAuthProviderConfig, code: String): F[Either[String, User]]
+  def callback(config: OAuthProviderConfig,
+                 code: String,
+                 client: Client[F]): F[Either[DoormanError, UserData]]
 }
+
+val endpoints = OAuthEndpoints[IO, AppUser]()
 ```
 
 See the demo application for an example how to tie all together.
@@ -152,6 +158,10 @@ To run the demo, you need to setup your OAuth2 with Google, then privide configu
 
 `sbt '+ publishSigned'`
 `sbt sonatypeReleaseAll`
+
+    sbt
+    ++ 2.12.10!
+    docs/mdoc
  
 
 

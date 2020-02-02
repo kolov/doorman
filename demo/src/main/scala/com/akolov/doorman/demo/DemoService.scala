@@ -3,7 +3,7 @@ package com.akolov.doorman.demo
 import cats.data.{EitherT, NonEmptyList}
 import cats.effect.{Blocker, ContextShift, Effect, Resource}
 import cats.implicits._
-import com.akolov.doorman.core.{DoormanAuthMiddleware, DoormanTrackingMiddleware, OAuthProviderConfig, OauthEndpoints, UserData, UserManager}
+import com.akolov.doorman.core._
 import io.circe._
 import io.circe.generic.semiauto._
 import io.circe.syntax._
@@ -15,18 +15,18 @@ import org.http4s.headers.{`Cache-Control`, Location}
 import org.http4s.{AuthedRoutes, HttpRoutes, ResponseCookie, StaticFile, Uri}
 
 class DemoService[F[_]: Effect: ContextShift](
-  userManager: UserManager[F, AppUser],
-  providerLookup: String => Option[OAuthProviderConfig],
-  httpClient: Resource[F, Client[F]]
-)(implicit blocker: Blocker
-) extends Http4sDsl[F] {
+    userManager: UserManager[F, AppUser],
+    providerLookup: String => Option[OAuthProviderConfig],
+    httpClient: Resource[F, Client[F]]
+)(implicit blocker: Blocker)
+    extends Http4sDsl[F] {
 
   val track = DoormanTrackingMiddleware(userManager)
   val auth = DoormanAuthMiddleware(userManager)
 
   object CodeMatcher extends QueryParamDecoderMatcher[String]("code")
 
-  val oauth = OauthEndpoints[F, AppUser]()
+  val oauth = OAuthEndpoints[F, AppUser]()
 
   implicit val appUserEncoder: Encoder[AppUser] = deriveEncoder[AppUser]
 
@@ -46,7 +46,8 @@ class DemoService[F[_]: Effect: ContextShift](
                 )
               }
           }
-          .getOrElse(BadRequest(s"Bad or missing configuration for $providerId"))
+          .getOrElse(BadRequest(
+            s"Bad or missing configuration for $providerId"))
       case POST -> Root / "logout" =>
         MovedPermanently(Location(Uri.unsafeFromString("/index.html")))
           .map(_.removeCookie(userManager.cookieName))
@@ -56,27 +57,35 @@ class DemoService[F[_]: Effect: ContextShift](
           case GET -> Root =>
             TemporaryRedirect(Location(Uri.unsafeFromString("/index.html")))
           case GET -> Root / "index.html" =>
-            StaticFile.fromResource("/web/index.html", blocker).getOrElseF(NotFound())
+            StaticFile
+              .fromResource("/web/index.html", blocker)
+              .getOrElseF(NotFound())
 
         }
       ) <+>
       auth(
-        AuthedRoutes.of[AppUser, F] {
-          case GET -> Root / "userinfo" as user =>
-            Ok(user.asJson, `Cache-Control`(NonEmptyList(`no-cache`(), List(`no-store`, `must-revalidate`))))
-          case GET -> Root / "oauth" / "login" / providerId :? CodeMatcher(code) as user =>
-            handleCallback(providerId, code, user)
-        }
+        AuthedRoutes
+          .of[AppUser, F] {
+            case GET -> Root / "userinfo" as user =>
+              Ok(user.asJson,
+                 `Cache-Control`(
+                   NonEmptyList(`no-cache`(),
+                                List(`no-store`, `must-revalidate`))))
+            case GET -> Root / "oauth" / "login" / providerId :? CodeMatcher(
+                  code) as user =>
+              handleCallback(providerId, code, user)
+          }
       )
 
   def handleCallback(providerId: String, code: String, user: AppUser) = {
 
     val result =
       for {
-        config <- EitherT.fromOption[F](providerLookup(providerId), "Unknown provider")
+        config <- EitherT
+          .fromOption[F](providerLookup(providerId), "Unknown provider")
         result <- EitherT(httpClient.use { client =>
-                   oauth.callback(config, code, client).map(_.leftMap(_.toString))
-                 })
+          oauth.callback(config, code, client).map(_.leftMap(_.toString))
+        })
       } yield result
 
     result.value.handleError(e => Left(e.toString)).flatMap {
