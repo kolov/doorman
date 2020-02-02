@@ -31,6 +31,7 @@ Forget about if yo don't need that.
 
 To use the any middleware, provide a `UserManager`:
 
+
 ```scala
 val myUserManager = new UserManager[F, AppUser] {
 
@@ -47,18 +48,18 @@ val myUserManager = new UserManager[F, AppUser] {
   override def cookieToUser(cookie: String): F[Option[AppUser]] = ???
 
 }
-// myUserManager: AnyRef with UserManager[F, AppUser] = repl.Session$App$$anon$1@43905c0d
+// myUserManager: AnyRef with UserManager[F, AppUser] = repl.Session$App$$anon$1@331c984c
 ```
 
 Given a `UserManager`, Doorman provides `DoormanAuthMiddleware` and
-`UserTrackingMiddleware`: 
+`DoormanTrackingMiddleware`: 
 
 ```scala
 class DemoService[F[_]: Effect: ContextShift](userManager: UserManager[F, AppUser])
   extends Http4sDsl[F] {
 
     val auth = DoormanAuthMiddleware(userManager)
-    val track = UserTrackingMiddleware(userManager)
+    val track = DoormanTrackingMiddleware(userManager)
     val routes = auth(
       AuthedRoutes.of[AppUser, F] {
         case GET -> Root / "userinfo"  as user =>
@@ -68,11 +69,11 @@ class DemoService[F[_]: Effect: ContextShift](userManager: UserManager[F, AppUse
 }
 
 val service = new DemoService(myUserManager)
-// service: DemoService[F] = repl.Session$App$DemoService@1196e664
+// service: DemoService[F] = repl.Session$App$DemoService@4e3ba8c6
 ```   
 
 When the endpoint is hit, the request will be analyzed by the `UserManager` 
-and the endpoint function will get either the user from the cookie, 
+and the endpoint function will receive either the user from the cookie, 
 if one exists, or a newly created user. 
 In the case of a new user, a cookie will be set in the response. 
 
@@ -97,8 +98,7 @@ Given a configuration, `OauthEndpoints` provides handlers for the OAuth
 `login` constructs a login URL based on the configuration. It is up to
 the application set up a login endpoint that redirects the user  to this URL.
 `callback` handles th OAuth callback after successful authentication. It first retrieves an
-access token, than user details. It needs an `OAuthUserManager` to create a user from
-the OAuth user attributes.
+access token, than user details. It is up to the application to handle the OAuth2 user data.
 
 ```scala
 trait OauthEndpoints[F[_], User] {
@@ -120,7 +120,7 @@ A simple application with user tracking and OAuth2. User is tracked with a JWT c
 
 Start a server with:
 
-    docker run -p 8282:8282 --name fakeoauth -e PERMITTED_REDIRECT_URLS=http://localhost:8080/oauth/login/fake  pkbdev/fake-oauth2-server
+`docker run -p 8282:8282 --name fakeoauth -e PERMITTED_REDIRECT_URLS=http://localhost:8080/oauth/login/fake  pkbdev/fake-oauth2-server`
 
 To run the demo: `sbt demo/run` and point your browser to `http://localhost:8080`.
 

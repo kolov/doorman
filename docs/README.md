@@ -66,8 +66,8 @@ val myUserManager = new UserManager[F, AppUser] {
 }
 ```
 
-Given a `UserManager`, Doorman provides `AuthMiddleware` and
-`UserTrackingMiddleware`: 
+Given a `UserManager`, Doorman provides `DoormanAuthMiddleware` and
+`DoormanTrackingMiddleware`: 
 
 ```scala mdoc
 
@@ -75,7 +75,7 @@ class DemoService[F[_]: Effect: ContextShift](userManager: UserManager[F, AppUse
   extends Http4sDsl[F] {
 
     val auth = DoormanAuthMiddleware(userManager)
-    val track = UserTrackingMiddleware(userManager)
+    val track = DoormanTrackingMiddleware(userManager)
     val routes = auth(
       AuthedRoutes.of[AppUser, F] {
         case GET -> Root / "userinfo"  as user =>

@@ -3,7 +3,7 @@ package com.akolov.doorman.demo
 import cats.data.{EitherT, NonEmptyList}
 import cats.effect.{Blocker, ContextShift, Effect, Resource}
 import cats.implicits._
-import com.akolov.doorman.core.{AuthMiddleware, OAuthProviderConfig, OauthEndpoints, UserData, UserManager, UserTrackingMiddleware}
+import com.akolov.doorman.core.{DoormanAuthMiddleware, OAuthProviderConfig, OauthEndpoints, UserData, UserManager, DoormanTrackingMiddleware}
 import io.circe._
 import io.circe.generic.semiauto._
 import io.circe.syntax._
@@ -21,8 +21,8 @@ class DemoService[F[_]: Effect: ContextShift](
 )(implicit blocker: Blocker
 ) extends Http4sDsl[F] {
 
-  val track = UserTrackingMiddleware(userManager)
-  val auth = AuthMiddleware(userManager)
+  val track = DoormanTrackingMiddleware(userManager)
+  val auth = DoormanAuthMiddleware(userManager)
 
   object CodeMatcher extends QueryParamDecoderMatcher[String]("code")
 
