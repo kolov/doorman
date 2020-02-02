@@ -48,7 +48,7 @@ val myUserManager = new UserManager[F, AppUser] {
   override def cookieToUser(cookie: String): F[Option[AppUser]] = ???
 
 }
-// myUserManager: AnyRef with UserManager[F, AppUser] = repl.Session$App$$anon$1@331c984c
+// myUserManager: AnyRef with UserManager[F, AppUser] = repl.Session$App$$anon$1@2cc26969
 ```
 
 Given a `UserManager`, Doorman provides `DoormanAuthMiddleware` and
@@ -69,7 +69,7 @@ class DemoService[F[_]: Effect: ContextShift](userManager: UserManager[F, AppUse
 }
 
 val service = new DemoService(myUserManager)
-// service: DemoService[F] = repl.Session$App$DemoService@4e3ba8c6
+// service: DemoService[F] = repl.Session$App$DemoService@6f04b0f2
 ```   
 
 When the endpoint is hit, the request will be analyzed by the `UserManager` 
@@ -102,11 +102,18 @@ access token, than user details. It is up to the application to handle the OAuth
 
 ```scala
 trait OauthEndpoints[F[_], User] {
+
   // Builds a url to redirect the user to for authentication
   def login(config: OAuthProviderConfig): Option[Uri]
+
   // handles the OAuth2 callback
-  def callback(providerId: String, config: OAuthProviderConfig, code: String): F[Either[String, User]]
+  def callback(config: OAuthProviderConfig,
+                 code: String,
+                 client: Client[F]): F[Either[DoormanError, UserData]]
 }
+
+val endpoints = OAuthEndpoints[IO, AppUser]()
+// endpoints: AnyRef with OAuthEndpoints[IO, AppUser] with Http4sDsl[IO] with client.dsl.Http4sClientDsl[IO] = com.akolov.doorman.core.OAuthEndpoints$$anon$1@7caa9868
 ```
 
 See the demo application for an example how to tie all together.
@@ -137,6 +144,10 @@ To run the demo, you need to setup your OAuth2 with Google, then privide configu
 
 `sbt '+ publishSigned'`
 `sbt sonatypeReleaseAll`
+
+    sbt
+    ++ 2.12.10!
+    docs/mdoc
  
 
 
