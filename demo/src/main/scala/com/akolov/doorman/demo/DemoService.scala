@@ -15,42 +15,40 @@ import org.http4s.headers.{`Cache-Control`, Location}
 import org.http4s.{AuthedRoutes, HttpRoutes, ResponseCookie, StaticFile, Uri}
 
 class DemoService[F[_]: Effect: ContextShift](
-    userManager: UserManager[F, AppUser],
-    providerLookup: String => Option[OAuthProviderConfig],
-    httpClient: Resource[F, Client[F]]
+  userManager: UserManager[F, AppUser],
+  providerLookup: String => Option[OAuthProviderConfig],
+  httpClient: Resource[F, Client[F]]
 )(implicit blocker: Blocker)
     extends Http4sDsl[F] {
 
-  val track = DoormanTrackingMiddleware(userManager)
-  val auth = DoormanAuthMiddleware(userManager)
+  private val cookieConfig: CookieConfig = CookieConfig(name = "demo-user", path = Some("/"))
+  val track = DoormanTrackingMiddleware(userManager, cookieConfig)
+  val auth = DoormanAuthMiddleware(userManager, cookieConfig)
 
   object CodeMatcher extends QueryParamDecoderMatcher[String]("code")
 
-  val oauth = OAuthEndpoints[F, AppUser]()
+  val oauth = OAuthEndpoints[F]()
 
   implicit val appUserEncoder: Encoder[AppUser] = deriveEncoder[AppUser]
 
   val routes =
     HttpRoutes.of[F] {
       case GET -> Root / "login" / providerId =>
-        providerLookup(providerId)
-          .flatMap { config =>
-            oauth
-              .login(config)
-              .toOption
-              .map { uri =>
-                MovedPermanently(
-                  location = Location(uri),
-                  body = "",
-                  headers = `Cache-Control`(NonEmptyList(`no-cache`(), Nil))
-                )
-              }
-          }
-          .getOrElse(BadRequest(
-            s"Bad or missing configuration for $providerId"))
+        providerLookup(providerId).flatMap { config =>
+          oauth
+            .login(config)
+            .toOption
+            .map { uri =>
+              MovedPermanently(
+                location = Location(uri),
+                body = "",
+                headers = `Cache-Control`(NonEmptyList(`no-cache`(), Nil))
+              )
+            }
+        }.getOrElse(BadRequest(s"Bad or missing configuration for $providerId"))
       case POST -> Root / "logout" =>
         MovedPermanently(Location(Uri.unsafeFromString("/index.html")))
-          .map(_.removeCookie(userManager.cookieName))
+          .map(_.removeCookie(cookieConfig.name))
     } <+>
       track(
         HttpRoutes.of[F] {
@@ -60,25 +58,19 @@ class DemoService[F[_]: Effect: ContextShift](
             StaticFile
               .fromResource("/web/index.html", blocker)
               .getOrElseF(NotFound())
-
         }
       ) <+>
       auth(
         AuthedRoutes
           .of[AppUser, F] {
             case GET -> Root / "userinfo" as user =>
-              Ok(user.asJson,
-                 `Cache-Control`(
-                   NonEmptyList(`no-cache`(),
-                                List(`no-store`, `must-revalidate`))))
-            case GET -> Root / "oauth" / "login" / providerId :? CodeMatcher(
-                  code) as user =>
+              Ok(user.asJson, `Cache-Control`(NonEmptyList(`no-cache`(), List(`no-store`, `must-revalidate`))))
+            case GET -> Root / "oauth" / "login" / providerId :? CodeMatcher(code) as user =>
               handleCallback(providerId, code, user)
           }
       )
 
   def handleCallback(providerId: String, code: String, user: AppUser) = {
-
     val result =
       for {
         config <- EitherT
@@ -95,14 +87,12 @@ class DemoService[F[_]: Effect: ContextShift](
         val cookieContent = userManager.userToCookie(appUser)
 
         val respCookie = ResponseCookie(
-          name = userManager.cookieName,
+          name = cookieConfig.name,
           content = cookieContent,
           path = Some("/")
         )
         MovedPermanently(Location(Uri.unsafeFromString("/index.html")))
           .map(_.addCookie(respCookie))
     }
-
   }
-
 }

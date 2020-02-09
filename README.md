@@ -35,9 +35,6 @@ To use the any middleware, provide a `UserManager`:
 ```scala
 val myUserManager = new UserManager[F, AppUser] {
 
-  /** name of the tracking cookie */
-  override def cookieName: String = ???
-
   /** Create a new non-authenticated user */
   override def create: F[AppUser] = ???
 
@@ -48,7 +45,7 @@ val myUserManager = new UserManager[F, AppUser] {
   override def cookieToUser(cookie: String): F[Option[AppUser]] = ???
 
 }
-// myUserManager: AnyRef with UserManager[F, AppUser] = repl.Session$App$$anon$1@2cc26969
+// myUserManager: AnyRef with UserManager[F, AppUser] = repl.Session$App$$anon$1@3ca9c607
 ```
 
 Given a `UserManager`, Doorman provides `DoormanAuthMiddleware` and
@@ -58,8 +55,9 @@ Given a `UserManager`, Doorman provides `DoormanAuthMiddleware` and
 class DemoService[F[_]: Effect: ContextShift](userManager: UserManager[F, AppUser])
   extends Http4sDsl[F] {
 
-    val auth = DoormanAuthMiddleware(userManager)
-    val track = DoormanTrackingMiddleware(userManager)
+    val cookieConfig = CookieConfig(name = "demo-user", path = Some("/"))
+    val auth = DoormanAuthMiddleware(userManager, cookieConfig)
+    val track = DoormanTrackingMiddleware(userManager, cookieConfig)
     val routes = auth(
       AuthedRoutes.of[AppUser, F] {
         case GET -> Root / "userinfo"  as user =>
@@ -69,7 +67,7 @@ class DemoService[F[_]: Effect: ContextShift](userManager: UserManager[F, AppUse
 }
 
 val service = new DemoService(myUserManager)
-// service: DemoService[F] = repl.Session$App$DemoService@6f04b0f2
+// service: DemoService[F] = repl.Session$App$DemoService@314228e0
 ```   
 
 When the endpoint is hit, the request will be analyzed by the `UserManager` 
@@ -88,7 +86,7 @@ case class OAuthProviderConfig(
      userInfoUri: String,
      clientId: String,
      clientSecret: String,
-     scope: Iterable[String],
+     scope: List[String],
      redirectUrl: String
    )
 ```
@@ -101,7 +99,7 @@ the application set up a login endpoint that redirects the user  to this URL.
 access token, than user details. It is up to the application to handle the OAuth2 user data.
 
 ```scala
-trait OauthEndpoints[F[_], User] {
+trait OauthEndpoints[F[_]] {
 
   // Builds a url to redirect the user to for authentication
   def login(config: OAuthProviderConfig): Option[Uri]
@@ -112,8 +110,8 @@ trait OauthEndpoints[F[_], User] {
                  client: Client[F]): F[Either[DoormanError, UserData]]
 }
 
-val endpoints = OAuthEndpoints[IO, AppUser]()
-// endpoints: AnyRef with OAuthEndpoints[IO, AppUser] with Http4sDsl[IO] with client.dsl.Http4sClientDsl[IO] = com.akolov.doorman.core.OAuthEndpoints$$anon$1@7caa9868
+val endpoints = OAuthEndpoints[IO]()
+// endpoints: AnyRef with OAuthEndpoints[IO] with Http4sDsl[IO] with client.dsl.Http4sClientDsl[IO] = com.akolov.doorman.core.OAuthEndpoints$$anon$1@ee16b36
 ```
 
 See the demo application for an example how to tie all together.
@@ -140,14 +138,12 @@ To run the demo, you need to setup your OAuth2 with Google, then privide configu
   `OAUTH2_GOOGLE_REDIRECT_URL` (see `application.conf`)
 
 
-## Developent notes
+## Developer's notes
 
-`sbt '+ publishSigned'`
-`sbt sonatypeReleaseAll`
+    sbt '+ publishSigned'
+    sbt sonatypeReleaseAll
 
-    sbt
-    ++ 2.12.10!
-    docs/mdoc
+    sbt '++2.12.10! docs/mdoc'
  
 
 

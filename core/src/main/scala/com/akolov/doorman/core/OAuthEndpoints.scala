@@ -1,6 +1,5 @@
 package com.akolov.doorman.core
 
-import cats._
 import cats.data._
 import cats.effect._
 import cats.implicits._
@@ -13,18 +12,18 @@ import org.http4s.headers.{Accept, Authorization}
 
 // This is needed for every OAuth2 provider
 case class OAuthProviderConfig(
-    userAuthorizationUri: String,
-    accessTokenUri: String,
-    userInfoUri: String,
-    clientId: String,
-    clientSecret: String,
-    scope: Iterable[String],
-    redirectUrl: String
+  userAuthorizationUri: String,
+  accessTokenUri: String,
+  userInfoUri: String,
+  clientId: String,
+  clientSecret: String,
+  scope: List[String],
+  redirectUrl: String
 )
 
 import org.http4s._, org.http4s.dsl.io._, org.http4s.implicits._
 
-// on successful authentication, we'll get this from the pRovider
+// on successful authentication, we'll get this from the Oauth2 provider
 case class UserData(attrs: Map[String, String])
 
 /**
@@ -32,19 +31,17 @@ case class UserData(attrs: Map[String, String])
   * They need to be mapped to
   * routes. See the demo application for an example
   */
-trait OAuthEndpoints[F[_], User] {
+trait OAuthEndpoints[F[_]] {
   // Builds a url to redirect the user to for authentication
   def login(config: OAuthProviderConfig): Either[DoormanError, Uri]
   // handles teh OAuth2 callback
-  def callback(config: OAuthProviderConfig,
-               code: String,
-               client: Client[F]): F[Either[DoormanError, UserData]]
+  def callback(config: OAuthProviderConfig, code: String, client: Client[F]): F[Either[DoormanError, UserData]]
 }
 
 object OAuthEndpoints {
 
-  def apply[F[_]: Effect: Monad, User]() =
-    new OAuthEndpoints[F, User] with Http4sDsl[F] with Http4sClientDsl[F] {
+  def apply[F[_]: Sync]() =
+    new OAuthEndpoints[F] with Http4sDsl[F] with Http4sClientDsl[F] {
 
       def login(config: OAuthProviderConfig): Either[DoormanError, Uri] =
         for {
@@ -65,10 +62,7 @@ object OAuthEndpoints {
           )
         } yield uri
 
-      def callback(config: OAuthProviderConfig,
-                   code: String,
-                   client: Client[F]): F[Either[DoormanError, UserData]] = {
-
+      def callback(config: OAuthProviderConfig, code: String, client: Client[F]): F[Either[DoormanError, UserData]] = {
         implicit val jsonObjectDecoder: EntityDecoder[F, JsonObject] =
           jsonOf[F, JsonObject]
 
@@ -90,13 +84,11 @@ object OAuthEndpoints {
             Accept(MediaType.application.json)
           )
 
-          resp <- EitherT.liftF[F, DoormanError, JsonObject](
-            client.expect[JsonObject](request))
+          resp <- EitherT.liftF[F, DoormanError, JsonObject](client.expect[JsonObject](request))
           access_token <- EitherT.fromOption[F]({
             resp.toMap
               .get("access_token")
               .flatMap(_.asString)
-
           }, NoAccessTokenInResponse())
           uriUser <- EitherT.fromEither[F](
             Uri
@@ -116,16 +108,13 @@ object OAuthEndpoints {
                 )
               )
             )
-
           }
           userMap <- EitherT.pure[F, DoormanError](respUser.toMap.map {
             case (k, v) => (k, v.toString)
           })
-
         } yield UserData(userMap)
 
         e.value
       }
-
     }
 }

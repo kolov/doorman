@@ -15,11 +15,10 @@ case class AppUser(
   name: Option[String] = None,
   data: Map[String, String] = Map.empty
 ) {
-  def identified( data: UserData) = AppUser(uuid, true, data.attrs.get("name"), data.attrs)
+  def identified(data: UserData) = AppUser(uuid, true, data.attrs.get("name"), data.attrs)
 }
 
 trait JwtIssuer[F[_]] {
-
   private val appName = "DemoApp"
 
   private val algorithm = Algorithm.HMAC256("somesecret")
@@ -36,8 +35,7 @@ trait JwtIssuer[F[_]] {
       .withClaim("sub", user.uuid.toString)
       .withClaim("authenticated", user.authenticated)
 
-    val builder1 = user
-      .name
+    val builder1 = user.name
       .map(name => builder.withClaim("name", name))
       .getOrElse(builder)
 
@@ -54,17 +52,13 @@ trait JwtIssuer[F[_]] {
         )
       }
     }
-
 }
 
 object DemoUserManager extends UserManager[IO, AppUser] with JwtIssuer[IO] {
-
-  override def cookieName: String = "demo-app-user"
 
   override def create(): IO[AppUser] =
     IO.delay(AppUser(UUID.randomUUID))
 
   override def cookieToUser(cookie: String): IO[Option[AppUser]] =
     IO.delay(parseCookie(cookie))
-
 }
