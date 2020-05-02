@@ -2,9 +2,6 @@ package com.akolov.doorman.core
 
 trait UserManager[F[_], User] {
 
-  /** name of the tracking cookie */
-  def cookieName: String
-
   /** Create a new non-authenticated user */
   def create: F[User]
 

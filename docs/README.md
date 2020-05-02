@@ -51,9 +51,6 @@ implicit val contextShiftIO: ContextShift[IO] = IO.contextShift(ec)
 ```scala mdoc
 val myUserManager = new UserManager[F, AppUser] {
 
-  /** name of the tracking cookie */
-  override def cookieName: String = ???
-
   /** Create a new non-authenticated user */
   override def create: F[AppUser] = ???
 
@@ -74,8 +71,9 @@ Given a `UserManager`, Doorman provides `DoormanAuthMiddleware` and
 class DemoService[F[_]: Effect: ContextShift](userManager: UserManager[F, AppUser])
   extends Http4sDsl[F] {
 
-    val auth = DoormanAuthMiddleware(userManager)
-    val track = DoormanTrackingMiddleware(userManager)
+    val cookieConfig = CookieConfig(name = "demo-user", path = Some("/"))
+    val auth = DoormanAuthMiddleware(userManager, cookieConfig)
+    val track = DoormanTrackingMiddleware(userManager, cookieConfig)
     val routes = auth(
       AuthedRoutes.of[AppUser, F] {
         case GET -> Root / "userinfo"  as user =>
@@ -103,7 +101,7 @@ case class OAuthProviderConfig(
      userInfoUri: String,
      clientId: String,
      clientSecret: String,
-     scope: Iterable[String],
+     scope: List[String],
      redirectUrl: String
    )
 ```
@@ -116,7 +114,7 @@ the application set up a login endpoint that redirects the user  to this URL.
 access token, than user details. It is up to the application to handle the OAuth2 user data.
 
 ```scala mdoc
-trait OauthEndpoints[F[_], User] {
+trait OauthEndpoints[F[_]] {
 
   // Builds a url to redirect the user to for authentication
   def login(config: OAuthProviderConfig): Option[Uri]
@@ -127,7 +125,7 @@ trait OauthEndpoints[F[_], User] {
                  client: Client[F]): F[Either[DoormanError, UserData]]
 }
 
-val endpoints = OAuthEndpoints[IO, AppUser]()
+val endpoints = OAuthEndpoints[IO]()
 ```
 
 See the demo application for an example how to tie all together.
@@ -159,9 +157,7 @@ To run the demo, you need to setup your OAuth2 with Google, then privide configu
     sbt '+ publishSigned'
     sbt sonatypeReleaseAll
 
-    sbt
-    ++ 2.12.10!
-    docs/mdoc
+    sbt '++2.12.10! docs/mdoc' // project-docs/target/mdoc/README.md
  
 
 

@@ -17,7 +17,7 @@ ThisBuild / organization := "com.akolov"
 ThisBuild / name := "doorman"
 ThisBuild / scalaVersion := scala213
 ThisBuild / publishMavenStyle := true
-ThisBuild / credentials += Credentials(Path.userHome / ".sonatype" / ".credentials")
+ThisBuild / credentials += Credentials(Path.userHome / ".sbt" / "sonatype_credentials")
 ThisBuild / description := "Oauth2 authentication and user session middleware for http4s"
 ThisBuild / licenses := Seq("MIT License" -> url("https://github.com/kolov/doorman/blob/master/LICENSE"))
 ThisBuild / useGpg := true
@@ -68,7 +68,6 @@ lazy val core = (project in file("core")).settings(
     "io.circe" %% "circe-generic" % CirceVersion,
     "io.circe" %% "circe-parser" % CirceVersion
   ) ++ testDependencies,
-  publishTo := Some("releases" at "https://oss.sonatype.org/service/local/staging/deploy/maven2"),
   credentials += Credentials(Path.userHome / ".sonatype" / ".credentials"),
   crossScalaVersions := supportedScalaVersions
 )
