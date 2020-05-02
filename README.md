@@ -140,6 +140,7 @@ To run the demo, you need to setup your OAuth2 with Google, then privide configu
 
 ## Developer's notes
 
+    set -x GPG_TTY (tty)
     sbt '+ publishSigned'
     sbt sonatypeReleaseAll
 

@@ -109,12 +109,26 @@ object OAuthEndpoints {
               )
             )
           }
-          userMap <- EitherT.pure[F, DoormanError](respUser.toMap.map {
-            case (k, v) => (k, v.toString)
-          })
+          userMap <- EitherT.pure[F, DoormanError](jsonToMap(respUser))
         } yield UserData(userMap)
 
         e.value
       }
+    }
+
+  // without it, strings get extra quotes
+  def jsonToMap(m: JsonObject): Map[String, String] =
+    m.toMap.map {
+      case (k, v) =>
+        (
+          k,
+          v.fold(
+            v.toString,
+            _.toString,
+            _.toString,
+            s => s,
+            _.toString,
+            _.toString
+          ))
     }
 }
