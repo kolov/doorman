@@ -5,7 +5,6 @@ addSbtPlugin("org.xerial.sbt" % "sbt-sonatype" % "3.4")
 addSbtPlugin("com.jsuereth" % "sbt-pgp" % "2.0.0-M2")
 addSbtPlugin("com.github.gseitz" % "sbt-release" % "1.0.12")
 
-addSbtPlugin("org.scalameta" % "sbt-mdoc" % "2.1.0")
+addSbtPlugin("org.scalameta" % "sbt-mdoc" % "2.2.23")
 addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.3.0")
-
 addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.5.2")
