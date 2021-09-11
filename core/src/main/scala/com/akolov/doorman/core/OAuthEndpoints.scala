@@ -1,5 +1,6 @@
 package com.akolov.doorman.core
 
+import cats._
 import cats.data._
 import cats.effect._
 import cats.implicits._
@@ -9,7 +10,6 @@ import org.http4s.client.Client
 import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.{Accept, Authorization}
-
 // This is needed for every OAuth2 provider
 case class OAuthProviderConfig(
   userAuthorizationUri: String,
@@ -40,7 +40,7 @@ trait OAuthEndpoints[F[_]] {
 
 object OAuthEndpoints {
 
-  def apply[F[_]: Sync]() =
+  def apply[F[_]: Concurrent]() =
     new OAuthEndpoints[F] with Http4sDsl[F] with Http4sClientDsl[F] {
 
       def login(config: OAuthProviderConfig): Either[DoormanError, Uri] =
@@ -63,8 +63,8 @@ object OAuthEndpoints {
         } yield uri
 
       def callback(config: OAuthProviderConfig, code: String, client: Client[F]): F[Either[DoormanError, UserData]] = {
-        implicit val jsonObjectDecoder: EntityDecoder[F, JsonObject] =
-          jsonOf[F, JsonObject]
+         implicit val jsonObjectDecoder: EntityDecoder[F, JsonObject] =
+           jsonOf[F, JsonObject]
 
         val e: EitherT[F, DoormanError, UserData] = for {
           uri <- EitherT.fromEither[F](
@@ -100,7 +100,7 @@ object OAuthEndpoints {
               Request[F](
                 method = GET,
                 uri = uriUser,
-                headers = Headers.of(
+                headers = Headers(
                   Accept(MediaType.application.json),
                   Authorization(
                     Credentials.Token(AuthScheme.Bearer, access_token)

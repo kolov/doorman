@@ -2,7 +2,6 @@ package com.akolov.doorman.core
 
 import cats._
 import cats.data._
-import cats.effect.Effect
 import cats.implicits._
 import org.http4s.headers.Cookie
 import org.http4s.server.{AuthMiddleware, Middleware}
@@ -21,11 +20,11 @@ case class CookieConfig(
 object DoormanTrackingMiddleware extends DoormanMiddleware {
   type UserTrackingMiddleware[F[_], _] = Middleware[OptionT[F, *], Request[F], Response[F], Request[F], Response[F]]
 
-  def apply[F[_]: Effect, User](
+  def apply[F[_] : Monad, User](
     userManager: UserManager[F, User],
     cookieConfig: CookieConfig): UserTrackingMiddleware[F, User] = {
     (service: Kleisli[OptionT[F, *], Request[F], Response[F]]) =>
-      Kleisli { r: Request[F] =>
+      Kleisli { (r: Request[F]) =>
         OptionT(userFromRequest(r, userManager, cookieConfig.name).flatMap {
           case (isOld, user) =>
             val resp: OptionT[F, Response[F]] = service.run(r)
@@ -55,8 +54,8 @@ object DoormanAuthMiddleware extends DoormanMiddleware {
   def apply[F[_]: Monad, User](
     userManager: UserManager[F, User],
     cookieConfig: CookieConfig): AuthMiddleware[F, User] = {
-    (service: Kleisli[OptionT[F, ?], AuthedRequest[F, User], Response[F]]) =>
-      Kleisli { r: Request[F] =>
+    (service: Kleisli[OptionT[F, *], AuthedRequest[F, User], Response[F]]) =>
+      Kleisli { (r: Request[F]) =>
         val respf: F[Option[Response[F]]] = userFromRequest(r, userManager, cookieConfig.name).flatMap {
           case (isOld, user) =>
             val resp: OptionT[F, Response[F]] = service.run(AuthedRequest(user, r))
@@ -101,10 +100,8 @@ trait DoormanMiddleware {
     userManager: UserManager[F, User],
     cookieName: String
   ): F[Option[User]] = {
-    Cookie
-      .from(req.headers)
-      .flatMap(_.values.filter(_.name == cookieName).headOption)
-      .map(_.content)
-      .fold[F[Option[User]]](Monad[F].pure(None))(c => userManager.cookieToUser(c))
+    req.cookies.filter(_.name == cookieName).headOption.map(_.content)
+    .fold[F[Option[User]]](Monad[F].pure(None))(c => userManager.cookieToUser(c))
+     
   }
 }

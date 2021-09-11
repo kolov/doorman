@@ -1,8 +1,8 @@
 package com.akolov.doorman.demo
 
 import cats.effect.{ExitCode, IO, IOApp}
-import cats.implicits._
-import org.http4s.server.blaze.BlazeServerBuilder
+import cats.implicits.*
+import org.http4s.blaze.server.BlazeServerBuilder
 
 object Main extends IOApp {
 

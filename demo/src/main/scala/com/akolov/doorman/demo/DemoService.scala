@@ -1,25 +1,34 @@
 package com.akolov.doorman.demo
 
+import cats.Monad
 import cats.data.{EitherT, NonEmptyList}
-import cats.effect.{Blocker, ContextShift, Effect, Resource}
-import cats.implicits._
-import com.akolov.doorman.core._
-import io.circe._
-import io.circe.generic.semiauto._
-import io.circe.syntax._
-import org.http4s.CacheDirective._
-import org.http4s.circe._
+import cats.effect.*
+import cats.effect.kernel.Sync
+import cats.effect.unsafe.implicits.global
+import cats.implicits.*
+import com.akolov.doorman.core.*
+import com.akolov.doorman.demo.AppUser
+import io.circe.*
+import io.circe.generic.auto._
+import org.http4s.*
+import org.http4s.CacheDirective.*
+import org.http4s.circe.*
 import org.http4s.client.Client
 import org.http4s.dsl.Http4sDsl
-import org.http4s.headers.{`Cache-Control`, Location}
-import org.http4s.{AuthedRoutes, HttpRoutes, ResponseCookie, StaticFile, Uri}
+import org.http4s.headers.{Location, `Cache-Control`}
+import io.circe.syntax._
 
-class DemoService[F[_]: Effect: ContextShift](
+import scala.io.Source
+
+class DemoService[F[_]](
   userManager: UserManager[F, AppUser],
   providerLookup: String => Option[OAuthProviderConfig],
   httpClient: Resource[F, Client[F]]
-)(implicit blocker: Blocker)
+)(using Concurrent[F])
     extends Http4sDsl[F] {
+
+  val f1 = implicitly[Concurrent[F]]
+  val f2 = implicitly[Monad[F]]
 
   private val cookieConfig: CookieConfig = CookieConfig(name = "demo-user", path = Some("/"))
   val track = DoormanTrackingMiddleware(userManager, cookieConfig)
@@ -28,8 +37,6 @@ class DemoService[F[_]: Effect: ContextShift](
   object CodeMatcher extends QueryParamDecoderMatcher[String]("code")
 
   val oauth = OAuthEndpoints[F]()
-
-  implicit val appUserEncoder: Encoder[AppUser] = deriveEncoder[AppUser]
 
   val routes =
     HttpRoutes.of[F] {
@@ -55,9 +62,11 @@ class DemoService[F[_]: Effect: ContextShift](
           case GET -> Root =>
             TemporaryRedirect(Location(Uri.unsafeFromString("/index.html")))
           case GET -> Root / "index.html" =>
-            StaticFile
-              .fromResource("/web/index.html", blocker)
-              .getOrElseF(NotFound())
+            val body = Source.fromResource("/web/index.html").getLines().mkString("\n")
+//            StaticFile
+//              .fromResource[F]("/web/index.html")
+//              .getOrElseF(NotFound())
+            Ok(body)
         }
       ) <+>
       auth(
