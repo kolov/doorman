@@ -28,7 +28,7 @@ object DoormanTrackingMiddleware extends DoormanMiddleware {
         OptionT(userFromRequest(r, userManager, cookieConfig.name).flatMap {
           case (isOld, user) =>
             val resp: OptionT[F, Response[F]] = service.run(r)
-            if (isOld) {
+            if isOld then {
               resp.value
             } else {
               val cookie = ResponseCookie(
@@ -59,7 +59,7 @@ object DoormanAuthMiddleware extends DoormanMiddleware {
         val respf: F[Option[Response[F]]] = userFromRequest(r, userManager, cookieConfig.name).flatMap {
           case (isOld, user) =>
             val resp: OptionT[F, Response[F]] = service.run(AuthedRequest(user, r))
-            if (isOld) {
+            if isOld then {
               resp.value
             } else {
               val cookie = ResponseCookie(

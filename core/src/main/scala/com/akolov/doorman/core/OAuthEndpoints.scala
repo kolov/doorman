@@ -10,6 +10,7 @@ import org.http4s.client.Client
 import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.{Accept, Authorization}
+
 // This is needed for every OAuth2 provider
 case class OAuthProviderConfig(
   userAuthorizationUri: String,
@@ -26,10 +27,8 @@ import org.http4s._, org.http4s.dsl.io._, org.http4s.implicits._
 // on successful authentication, we'll get this from the Oauth2 provider
 case class UserData(attrs: Map[String, String])
 
-/**
-  * This provides the necessary endpoints to handle OAuth login and callback.
-  * They need to be mapped to
-  * routes. See the demo application for an example
+/** This provides the necessary endpoints to handle OAuth login and callback. They need to be mapped to routes. See the
+  * demo application for an example
   */
 trait OAuthEndpoints[F[_]] {
   // Builds a url to redirect the user to for authentication
@@ -44,7 +43,7 @@ object OAuthEndpoints {
     new OAuthEndpoints[F] with Http4sDsl[F] with Http4sClientDsl[F] {
 
       def login(config: OAuthProviderConfig): Either[DoormanError, Uri] =
-        for {
+        for
           base <- Uri
             .fromString(config.userAuthorizationUri)
             .leftMap(e => ConfigurationError(e.message))
@@ -60,13 +59,13 @@ object OAuthEndpoints {
             ),
             base.fragment
           )
-        } yield uri
+        yield uri
 
       def callback(config: OAuthProviderConfig, code: String, client: Client[F]): F[Either[DoormanError, UserData]] = {
-         implicit val jsonObjectDecoder: EntityDecoder[F, JsonObject] =
-           jsonOf[F, JsonObject]
+        implicit val jsonObjectDecoder: EntityDecoder[F, JsonObject] =
+          jsonOf[F, JsonObject]
 
-        val e: EitherT[F, DoormanError, UserData] = for {
+        val e: EitherT[F, DoormanError, UserData] = for
           uri <- EitherT.fromEither[F](
             Uri
               .fromString(config.accessTokenUri)
@@ -85,11 +84,13 @@ object OAuthEndpoints {
           )
 
           resp <- EitherT.liftF[F, DoormanError, JsonObject](client.expect[JsonObject](request))
-          access_token <- EitherT.fromOption[F]({
-            resp.toMap
-              .get("access_token")
-              .flatMap(_.asString)
-          }, NoAccessTokenInResponse())
+          access_token <- EitherT.fromOption[F](
+            {
+              resp.toMap
+                .get("access_token")
+                .flatMap(_.asString)
+            },
+            NoAccessTokenInResponse())
           uriUser <- EitherT.fromEither[F](
             Uri
               .fromString(config.userInfoUri)
@@ -110,7 +111,7 @@ object OAuthEndpoints {
             )
           }
           userMap <- EitherT.pure[F, DoormanError](jsonToMap(respUser))
-        } yield UserData(userMap)
+        yield UserData(userMap)
 
         e.value
       }
@@ -118,17 +119,16 @@ object OAuthEndpoints {
 
   // without it, strings get extra quotes
   def jsonToMap(m: JsonObject): Map[String, String] =
-    m.toMap.map {
-      case (k, v) =>
-        (
-          k,
-          v.fold(
-            v.toString,
-            _.toString,
-            _.toString,
-            s => s,
-            _.toString,
-            _.toString
-          ))
+    m.toMap.map { case (k, v) =>
+      (
+        k,
+        v.fold(
+          v.toString,
+          _.toString,
+          _.toString,
+          s => s,
+          _.toString,
+          _.toString
+        ))
     }
 }

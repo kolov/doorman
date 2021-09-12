@@ -10,8 +10,8 @@ object AppConfig {
   private lazy val config: Config = ConfigFactory.load
   private lazy val configSource = ConfigSource.fromConfig(config)
 
-  given dd[A](using r: ConfigReader[A]): ConfigReader[Map[String, A]] with {
-    def from(cur: ConfigCursor): ConfigReader.Result[A] = ???
+  given dd[A](using r: ConfigReader[A]): ConfigReader[Map[String, A]]  with {
+
   }
 
 
