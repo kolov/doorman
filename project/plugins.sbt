@@ -9,4 +9,4 @@ addSbtPlugin("org.scalameta" % "sbt-mdoc" % "2.2.23")
 addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.3.0")
 addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.5.2")
 
-addSbtPlugin("ch.epfl.scala" % "sbt-scala3-migrate" % "0.4.4")
+//addSbtPlugin("ch.epfl.scala" % "sbt-scala3-migrate" % "0.4.4")

@@ -9,9 +9,7 @@ val CirceVersion = "0.15.0-M1"
 val CatsEffectVersion = "3.2.5"
 val scalaLoggingVersion = "3.9.4"
 
-lazy val scala3 = "3.0.0"
-
-lazy val supportedScalaVersions = List(scala3)
+lazy val scala3 = "3.0.2"
 
 ThisBuild / organization      := "com.akolov"
 ThisBuild / scalaVersion      := scala3
@@ -58,7 +56,7 @@ lazy val commonSettings = Seq(
     "-Ykind-projector",     // allow `*` as wildcard to be compatible with kind projector
     "-Xfatal-warnings",     // fail the compilation if there are any warnings
     "-Xmigration",          // warn about constructs whose behavior may have changed since version
-    "-source:3.0-migration"
+//    "-source:3.0-migration"
   )
 )
 
@@ -71,6 +69,7 @@ lazy val testDependencies = Seq(
 lazy val `doorman-core` = (project in file("core")).settings(
   name := "doorman-core",
   commonSettings,
+  scalaVersion      := scala3,
   libraryDependencies ++= Seq(
     "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingVersion,
     "org.http4s" %% "http4s-blaze-server"           % Http4sVersion,
@@ -84,8 +83,7 @@ lazy val `doorman-core` = (project in file("core")).settings(
     "org.typelevel" %% "cats-effect-std"    % CatsEffectVersion,
     "org.typelevel" %% "cats-effect"        % CatsEffectVersion
   ) ++ testDependencies,
-  credentials += Credentials(Path.userHome / ".sonatype" / ".credentials"),
-  crossScalaVersions := supportedScalaVersions
+  credentials += Credentials(Path.userHome / ".sonatype" / ".credentials")
 )
 
 lazy val demo = (project in file("demo"))
@@ -104,9 +102,8 @@ lazy val demo = (project in file("demo"))
 lazy val root = (project in file("."))
   .aggregate(demo, `doorman-core`)
   .settings(
-    name               := "doorman",
-    publish / skip     := true,
-    crossScalaVersions := Nil
+    name           := "doorman",
+    publish / skip := true
   )
 
 lazy val docs = project
@@ -114,8 +111,7 @@ lazy val docs = project
   .dependsOn(demo)
   .enablePlugins(MdocPlugin)
   .settings(
-    crossScalaVersions := Nil,
-    publish / skip     := true
+    publish / skip := true
 
     //    mdocOut := new java.io.File("README.md")
   )
